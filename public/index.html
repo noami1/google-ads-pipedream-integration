@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google Ads Integration Test</title>
+
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 { color: #4285f4; }
+    h2 { margin-top: 0; }
+    h3 { margin: 10px 0; }
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    label { display: block; margin-bottom: 5px; font-weight: 600; }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+    button {
+      background: #4285f4;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+    button:hover { background: #3367d6; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    button.secondary { background: #666; }
+    button.secondary:hover { background: #444; }
+    .status {
+      padding: 10px;
+      border-radius: 4px;
+      margin-top: 10px;
+    }
+    .status.success { background: #d4edda; color: #155724; }
+    .status.error { background: #f8d7da; color: #721c24; }
+    .status.info { background: #d1ecf1; color: #0c5460; }
+    .item {
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 4px;
+      margin-bottom: 8px;
+      border-left: 4px solid #4285f4;
+      cursor: pointer;
+    }
+    .item:hover { background: #e9ecef; }
+    .item.selected { background: #d4edda; border-left-color: #28a745; }
+    .item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .item-details { font-size: 12px; color: #666; margin-top: 5px; }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge.enabled { background: #d4edda; color: #155724; }
+    .badge.paused { background: #fff3cd; color: #856404; }
+    .badge.removed { background: #f8d7da; color: #721c24; }
+    .list-container { margin-top: 10px; max-height: 300px; overflow-y: auto; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
+    pre {
+      background: #f8f9fa;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 11px;
+      max-height: 250px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Google Ads Integration</h1>
+  
+  <div class="card">
+    <h2>Step 1: Set User ID</h2>
+    <label for="userId">External User ID:</label>
+    <input type="text" id="userId" placeholder="e.g., user-123" value="test-user-1">
+    <button onclick="saveUserId()">Save User ID</button>
+    <div id="userId-status"></div>
+  </div>
+
+  <div class="card">
+    <h2>Step 2: Connect Google Ads Account</h2>
+    <button onclick="connectGoogleAds()">Connect Google Ads</button>
+    <button class="secondary" onclick="refreshAccounts()">Refresh</button>
+    <div id="connect-status"></div>
+    <div id="accounts-list" class="list-container"></div>
+  </div>
+
+  <div class="card">
+    <h2>Step 3: Browse Data (via Proxy)</h2>
+    <button onclick="loadCustomers()" id="load-btn" disabled>Load Accessible Customers</button>
+    <div id="data-status"></div>
+    
+    <div class="grid">
+      <div>
+        <h3>Customers</h3>
+        <div id="customers-list" class="list-container"></div>
+      </div>
+      <div>
+        <h3>Campaigns</h3>
+        <div id="campaigns-list" class="list-container"></div>
+      </div>
+    </div>
+    
+    <div class="grid">
+      <div>
+        <h3>Ad Groups</h3>
+        <div id="adgroups-list" class="list-container"></div>
+      </div>
+      <div>
+        <h3>Ads</h3>
+        <div id="ads-list" class="list-container"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Raw API Response</h2>
+    <pre id="raw-response">Click "Load Accessible Customers" to start...</pre>
+  </div>
+
+  <script>
+    let currentUserId = 'test-user-1';
+    let selectedAccountId = null;
+    let selectedCustomerId = null;
+    let selectedCampaignId = null;
+    let selectedAdGroupId = null;
+
+    function showStatus(elementId, message, type) {
+      const el = document.getElementById(elementId);
+      el.className = `status ${type}`;
+      el.innerHTML = message;
+    }
+
+    function formatStatus(status) {
+      const s = (status || '').toString().toUpperCase();
+      if (s.includes('ENABLED')) return '<span class="badge enabled">ENABLED</span>';
+      if (s.includes('PAUSED')) return '<span class="badge paused">PAUSED</span>';
+      if (s.includes('REMOVED')) return '<span class="badge removed">REMOVED</span>';
+      return `<span class="badge">${s || 'UNKNOWN'}</span>`;
+    }
+
+    function formatMicros(micros) {
+      if (!micros) return 'N/A';
+      return '$' + (parseInt(micros) / 1000000).toFixed(2);
+    }
+
+    function showRawResponse(data) {
+      document.getElementById('raw-response').textContent = JSON.stringify(data, null, 2);
+    }
+
+    function saveUserId() {
+      currentUserId = document.getElementById('userId').value.trim();
+      if (!currentUserId) {
+        showStatus('userId-status', 'Please enter a user ID', 'error');
+        return;
+      }
+      showStatus('userId-status', `User ID set to: ${currentUserId}`, 'success');
+      selectedAccountId = null;
+      selectedCustomerId = null;
+      clearAllLists();
+      refreshAccounts();
+    }
+
+    function clearAllLists() {
+      ['accounts-list', 'customers-list', 'campaigns-list', 'adgroups-list', 'ads-list'].forEach(id => {
+        document.getElementById(id).innerHTML = '';
+      });
+    }
+
+    async function connectGoogleAds() {
+      if (!currentUserId) {
+        showStatus('connect-status', 'Please set a user ID first', 'error');
+        return;
+      }
+
+      try {
+        showStatus('connect-status', 'Getting connect token...', 'info');
+        
+        const tokenResponse = await fetch('/api/connect-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ externalUserId: currentUserId }),
+        });
+        
+        if (!tokenResponse.ok) throw new Error((await tokenResponse.json()).error || 'Failed to get token');
+        
+        const { connectLinkUrl } = await tokenResponse.json();
+        showStatus('connect-status', 'Opening Google Ads connection popup...', 'info');
+        
+        const popup = window.open(connectLinkUrl, 'google-ads-connect', 
+          `width=600,height=700,left=${(window.innerWidth-600)/2},top=${(window.innerHeight-700)/2}`);
+        
+        window.addEventListener('message', function handler(event) {
+          if (event.data?.type === 'google-ads-connected') {
+            window.removeEventListener('message', handler);
+            showStatus('connect-status', 'Google Ads connected!', 'success');
+            selectedAccountId = event.data.accountId || null;
+            refreshAccounts();
+          }
+        });
+        
+        const checkPopup = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(checkPopup);
+            setTimeout(refreshAccounts, 1000);
+          }
+        }, 500);
+      } catch (error) {
+        showStatus('connect-status', `Error: ${error.message}`, 'error');
+      }
+    }
+
+    async function refreshAccounts() {
+      if (!currentUserId) return;
+
+      try {
+        const response = await fetch(`/api/accounts?externalUserId=${encodeURIComponent(currentUserId)}`);
+        if (!response.ok) throw new Error((await response.json()).error);
+        
+        const data = await response.json();
+        const accounts = data.data || [];
+        const listEl = document.getElementById('accounts-list');
+        
+        if (accounts.length === 0) {
+          listEl.innerHTML = '<p style="color:#666;">No Google Ads accounts connected.</p>';
+          document.getElementById('load-btn').disabled = true;
+          return;
+        }
+        
+        listEl.innerHTML = accounts.map(acc => `
+          <div class="item ${selectedAccountId === acc.id ? 'selected' : ''}" onclick="selectAccount('${acc.id}')">
+            <div class="item-header">
+              <strong>${acc.name || 'Google Ads Account'}</strong>
+              ${selectedAccountId === acc.id ? '<span class="badge enabled">Selected</span>' : ''}
+            </div>
+            <div class="item-details">ID: ${acc.id}</div>
+          </div>
+        `).join('');
+        
+        if (!selectedAccountId && accounts.length > 0) selectAccount(accounts[0].id);
+      } catch (error) {
+        showStatus('connect-status', `Error: ${error.message}`, 'error');
+      }
+    }
+
+    function selectAccount(accountId) {
+      selectedAccountId = accountId;
+      selectedCustomerId = null;
+      clearAllLists();
+      refreshAccounts();
+      document.getElementById('load-btn').disabled = false;
+      showStatus('connect-status', `Selected account: ${accountId}`, 'success');
+    }
+
+    async function loadCustomers() {
+      if (!selectedAccountId) {
+        showStatus('data-status', 'Select an account first', 'error');
+        return;
+      }
+
+      try {
+        showStatus('data-status', 'Loading accessible customers...', 'info');
+        
+        const response = await fetch(
+          `/api/customers?externalUserId=${encodeURIComponent(currentUserId)}&accountId=${encodeURIComponent(selectedAccountId)}`
+        );
+        
+        if (!response.ok) throw new Error((await response.json()).error);
+        
+        const data = await response.json();
+        showRawResponse(data);
+        
+        const resourceNames = data.resourceNames || [];
+        const listEl = document.getElementById('customers-list');
+        
+        if (resourceNames.length === 0) {
+          listEl.innerHTML = '<p style="color:#666;">No customers found.</p>';
+          showStatus('data-status', 'No customers found', 'info');
+          return;
+        }
+        
+        listEl.innerHTML = resourceNames.map(rn => {
+          const customerId = rn.replace('customers/', '');
+          return `
+            <div class="item ${selectedCustomerId === customerId ? 'selected' : ''}" onclick="selectCustomer('${customerId}')">
+              <div class="item-header"><strong>Customer ${customerId}</strong></div>
+              <div class="item-details">${rn}</div>
+            </div>
+          `;
+        }).join('');
+        
+        showStatus('data-status', `Found ${resourceNames.length} customer(s). Click one to load campaigns.`, 'success');
+      } catch (error) {
+        showStatus('data-status', `Error: ${error.message}`, 'error');
+      }
+    }
+
+    async function selectCustomer(customerId) {
+      selectedCustomerId = customerId;
+      selectedCampaignId = null;
+      selectedAdGroupId = null;
+      document.getElementById('campaigns-list').innerHTML = '';
+      document.getElementById('adgroups-list').innerHTML = '';
+      document.getElementById('ads-list').innerHTML = '';
+      
+      document.querySelectorAll('#customers-list .item').forEach(el => {
+        el.classList.toggle('selected', el.textContent.includes(customerId));
+      });
+      
+      await loadCampaigns(customerId);
+    }
+
+    async function loadCampaigns(customerId) {
+      try {
+        showStatus('data-status', 'Loading campaigns...', 'info');
+        
+        const response = await fetch(
+          `/api/campaigns?externalUserId=${encodeURIComponent(currentUserId)}&accountId=${encodeURIComponent(selectedAccountId)}&customerId=${customerId}`
+        );
+        
+        if (!response.ok) throw new Error((await response.json()).error);
+        
+        const data = await response.json();
+        showRawResponse(data);
+        
+        const results = data.results || [];
+        const listEl = document.getElementById('campaigns-list');
+        
+        if (results.length === 0) {
+          listEl.innerHTML = '<p style="color:#666;">No campaigns found.</p>';
+          showStatus('data-status', 'No campaigns found', 'info');
+          return;
+        }
+        
+        listEl.innerHTML = results.map(r => {
+          const c = r.campaign || {};
+          const b = r.campaignBudget || {};
+          return `
+            <div class="item ${selectedCampaignId === c.id ? 'selected' : ''}" onclick="selectCampaign('${c.id}')">
+              <div class="item-header">
+                <strong>${c.name || 'Unnamed'}</strong>
+                ${formatStatus(c.status)}
+              </div>
+              <div class="item-details">
+                ID: ${c.id || 'N/A'}<br>
+                Type: ${c.advertisingChannelType || 'N/A'}<br>
+                Budget: ${formatMicros(b.amountMicros)}/day
+              </div>
+            </div>
+          `;
+        }).join('');
+        
+        showStatus('data-status', `Found ${results.length} campaign(s). Click one to load ad groups.`, 'success');
+      } catch (error) {
+        showStatus('data-status', `Error: ${error.message}`, 'error');
+      }
+    }
+
+    async function selectCampaign(campaignId) {
+      selectedCampaignId = campaignId;
+      selectedAdGroupId = null;
+      document.getElementById('adgroups-list').innerHTML = '';
+      document.getElementById('ads-list').innerHTML = '';
+      
+      document.querySelectorAll('#campaigns-list .item').forEach(el => {
+        el.classList.toggle('selected', el.textContent.includes(`ID: ${campaignId}`));
+      });
+      
+      await loadAdGroups(campaignId);
+    }
+
+    async function loadAdGroups(campaignId) {
+      try {
+        showStatus('data-status', 'Loading ad groups...', 'info');
+        
+        const response = await fetch(
+          `/api/ad-groups?externalUserId=${encodeURIComponent(currentUserId)}&accountId=${encodeURIComponent(selectedAccountId)}&customerId=${selectedCustomerId}&campaignId=${campaignId}`
+        );
+        
+        if (!response.ok) throw new Error((await response.json()).error);
+        
+        const data = await response.json();
+        showRawResponse(data);
+        
+        const results = data.results || [];
+        const listEl = document.getElementById('adgroups-list');
+        
+        if (results.length === 0) {
+          listEl.innerHTML = '<p style="color:#666;">No ad groups found.</p>';
+          showStatus('data-status', 'No ad groups found', 'info');
+          return;
+        }
+        
+        listEl.innerHTML = results.map(r => {
+          const ag = r.adGroup || {};
+          return `
+            <div class="item ${selectedAdGroupId === ag.id ? 'selected' : ''}" onclick="selectAdGroup('${ag.id}')">
+              <div class="item-header">
+                <strong>${ag.name || 'Unnamed'}</strong>
+                ${formatStatus(ag.status)}
+              </div>
+              <div class="item-details">
+                ID: ${ag.id || 'N/A'}<br>
+                Type: ${ag.type || 'N/A'}<br>
+                CPC: ${formatMicros(ag.cpcBidMicros)}
+              </div>
+            </div>
+          `;
+        }).join('');
+        
+        showStatus('data-status', `Found ${results.length} ad group(s). Click one to load ads.`, 'success');
+      } catch (error) {
+        showStatus('data-status', `Error: ${error.message}`, 'error');
+      }
+    }
+
+    async function selectAdGroup(adGroupId) {
+      selectedAdGroupId = adGroupId;
+      document.getElementById('ads-list').innerHTML = '';
+      
+      document.querySelectorAll('#adgroups-list .item').forEach(el => {
+        el.classList.toggle('selected', el.textContent.includes(`ID: ${adGroupId}`));
+      });
+      
+      await loadAds(adGroupId);
+    }
+
+    async function loadAds(adGroupId) {
+      try {
+        showStatus('data-status', 'Loading ads...', 'info');
+        
+        const response = await fetch(
+          `/api/ads?externalUserId=${encodeURIComponent(currentUserId)}&accountId=${encodeURIComponent(selectedAccountId)}&customerId=${selectedCustomerId}&adGroupId=${adGroupId}`
+        );
+        
+        if (!response.ok) throw new Error((await response.json()).error);
+        
+        const data = await response.json();
+        showRawResponse(data);
+        
+        const results = data.results || [];
+        const listEl = document.getElementById('ads-list');
+        
+        if (results.length === 0) {
+          listEl.innerHTML = '<p style="color:#666;">No ads found.</p>';
+          showStatus('data-status', 'No ads found', 'info');
+          return;
+        }
+        
+        listEl.innerHTML = results.map(r => {
+          const aga = r.adGroupAd || {};
+          const ad = aga.ad || {};
+          const rsa = ad.responsiveSearchAd || {};
+          const headlines = (rsa.headlines || []).map(h => h.text).slice(0,2).join(', ');
+          return `
+            <div class="item">
+              <div class="item-header">
+                <strong>Ad ${ad.id || 'N/A'}</strong>
+                ${formatStatus(aga.status)}
+              </div>
+              <div class="item-details">
+                Type: ${ad.type || 'N/A'}<br>
+                Headlines: ${headlines || 'N/A'}<br>
+                URLs: ${(ad.finalUrls || []).slice(0,1).join(', ') || 'N/A'}
+              </div>
+            </div>
+          `;
+        }).join('');
+        
+        showStatus('data-status', `Found ${results.length} ad(s)`, 'success');
+      } catch (error) {
+        showStatus('data-status', `Error: ${error.message}`, 'error');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', saveUserId);
+  </script>
+</body>
+</html>
