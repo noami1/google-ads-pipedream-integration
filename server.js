@@ -422,6 +422,307 @@ app.post('/api/customers/:customerId/:resource/mutate', async (req, res) => {
   }
 });
 
+app.post('/api/customers/:customerId/generateKeywordIdeas', async (req, res) => {
+  try {
+    const { customerId } = req.params;
+    const { 
+      externalUserId, 
+      accountId, 
+      keywords = [], 
+      url,
+      language = 'languageConstants/1000',
+      geoTargetConstants = ['geoTargetConstants/2376'],
+      loginCustomerId 
+    } = req.body;
+    
+    if (!externalUserId || !accountId) {
+      return res.status(400).json({ error: 'externalUserId and accountId are required' });
+    }
+    
+    if (!keywords.length && !url) {
+      return res.status(400).json({ error: 'At least one keyword or url is required' });
+    }
+
+    const requestBody = {
+      language,
+      geoTargetConstants,
+      includeAdultKeywords: false,
+      keywordPlanNetwork: 'GOOGLE_SEARCH',
+    };
+
+    if (keywords.length && url) {
+      requestBody.keywordAndUrlSeed = { keywords, url };
+    } else if (keywords.length) {
+      requestBody.keywordSeed = { keywords };
+    } else {
+      requestBody.urlSeed = { url };
+    }
+    
+    const result = await makeGoogleAdsRequest({
+      externalUserId,
+      accountId,
+      path: `/customers/${customerId}:generateKeywordIdeas`,
+      method: 'POST',
+      body: requestBody,
+      loginCustomerId,
+    });
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Error generating keyword ideas:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/customers/:customerId/createSimpleCampaign', async (req, res) => {
+  try {
+    const { customerId } = req.params;
+    const { 
+      externalUserId, 
+      accountId, 
+      campaignName,
+      budgetAmountMicros = 10000,
+      status = 'PAUSED',
+      loginCustomerId 
+    } = req.body;
+    
+    if (!externalUserId || !accountId || !campaignName) {
+      return res.status(400).json({ error: 'externalUserId, accountId, and campaignName are required' });
+    }
+
+    const budgetResult = await makeGoogleAdsRequest({
+      externalUserId,
+      accountId,
+      path: `/customers/${customerId}/campaignBudgets:mutate`,
+      method: 'POST',
+      body: {
+        operations: [{
+          create: {
+            name: `${campaignName} Budget`,
+            deliveryMethod: 'STANDARD',
+            amountMicros: String(budgetAmountMicros),
+          }
+        }]
+      },
+      loginCustomerId,
+    });
+
+    const budgetResourceName = budgetResult.results?.[0]?.resourceName;
+    if (!budgetResourceName) {
+      throw new Error('Failed to create budget: ' + JSON.stringify(budgetResult));
+    }
+
+    const campaignResult = await makeGoogleAdsRequest({
+      externalUserId,
+      accountId,
+      path: `/customers/${customerId}/campaigns:mutate`,
+      method: 'POST',
+      body: {
+        operations: [{
+          create: {
+            campaignBudget: budgetResourceName,
+            name: campaignName,
+            advertisingChannelType: 'SEARCH',
+            status,
+            manualCpc: {},
+            networkSettings: {
+              targetGoogleSearch: true,
+              targetSearchNetwork: true,
+              targetContentNetwork: false,
+              targetPartnerSearchNetwork: false,
+            }
+          }
+        }]
+      },
+      loginCustomerId,
+    });
+
+    res.json({
+      success: true,
+      budget: budgetResult,
+      campaign: campaignResult,
+    });
+  } catch (error) {
+    console.error('Error creating simple campaign:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) => {
+  try {
+    const { customerId } = req.params;
+    const { 
+      externalUserId, 
+      accountId, 
+      campaignName,
+      budgetAmountMicros = 10000,
+      adGroupName,
+      keywords = [],
+      adHeadlines = [],
+      adDescriptions = [],
+      finalUrl,
+      status = 'PAUSED',
+      loginCustomerId 
+    } = req.body;
+    
+    if (!externalUserId || !accountId || !campaignName) {
+      return res.status(400).json({ error: 'externalUserId, accountId, and campaignName are required' });
+    }
+
+    const batchJobResult = await makeGoogleAdsRequest({
+      externalUserId,
+      accountId,
+      path: `/customers/${customerId}/batchJobs:mutate`,
+      method: 'POST',
+      body: {
+        operation: { create: {} }
+      },
+      loginCustomerId,
+    });
+
+    const batchJobResourceName = batchJobResult.result?.resourceName;
+    if (!batchJobResourceName) {
+      throw new Error('Failed to create batch job: ' + JSON.stringify(batchJobResult));
+    }
+
+    const mutateOperations = [
+      {
+        campaignBudgetOperation: {
+          create: {
+            resourceName: `customers/${customerId}/campaignBudgets/-1`,
+            name: `${campaignName} Budget`,
+            deliveryMethod: 'STANDARD',
+            amountMicros: String(budgetAmountMicros),
+          }
+        }
+      },
+      {
+        campaignOperation: {
+          create: {
+            resourceName: `customers/${customerId}/campaigns/-2`,
+            name: campaignName,
+            advertisingChannelType: 'SEARCH',
+            status,
+            manualCpc: {},
+            campaignBudget: `customers/${customerId}/campaignBudgets/-1`,
+            networkSettings: {
+              targetGoogleSearch: true,
+              targetSearchNetwork: true,
+              targetContentNetwork: false,
+              targetPartnerSearchNetwork: false,
+            }
+          }
+        }
+      }
+    ];
+
+    if (adGroupName) {
+      mutateOperations.push({
+        adGroupOperation: {
+          create: {
+            resourceName: `customers/${customerId}/adGroups/-3`,
+            name: adGroupName,
+            campaign: `customers/${customerId}/campaigns/-2`,
+            type: 'SEARCH_STANDARD',
+            status: 'ENABLED',
+            cpcBidMicros: '1000000',
+          }
+        }
+      });
+
+      keywords.forEach((keyword, idx) => {
+        mutateOperations.push({
+          adGroupCriterionOperation: {
+            create: {
+              adGroup: `customers/${customerId}/adGroups/-3`,
+              status: 'ENABLED',
+              keyword: {
+                text: keyword,
+                matchType: 'BROAD',
+              }
+            }
+          }
+        });
+      });
+
+      if (adHeadlines.length >= 3 && adDescriptions.length >= 2 && finalUrl) {
+        mutateOperations.push({
+          adGroupAdOperation: {
+            create: {
+              adGroup: `customers/${customerId}/adGroups/-3`,
+              status: 'ENABLED',
+              ad: {
+                responsiveSearchAd: {
+                  headlines: adHeadlines.slice(0, 15).map(text => ({ text })),
+                  descriptions: adDescriptions.slice(0, 4).map(text => ({ text })),
+                },
+                finalUrls: [finalUrl],
+              }
+            }
+          }
+        });
+      }
+    }
+
+    await makeGoogleAdsRequest({
+      externalUserId,
+      accountId,
+      path: `/${batchJobResourceName}:addOperations`,
+      method: 'POST',
+      body: { mutateOperations },
+      loginCustomerId,
+    });
+
+    await makeGoogleAdsRequest({
+      externalUserId,
+      accountId,
+      path: `/${batchJobResourceName}:run`,
+      method: 'POST',
+      body: {},
+      loginCustomerId,
+    });
+
+    let results = null;
+    let attempts = 0;
+    while (attempts < 10) {
+      await new Promise(r => setTimeout(r, 2000));
+      attempts++;
+      
+      try {
+        const statusResult = await makeGoogleAdsRequest({
+          externalUserId,
+          accountId,
+          path: `/${batchJobResourceName}`,
+          method: 'GET',
+          loginCustomerId,
+        });
+        
+        if (statusResult.status === 'DONE') {
+          results = await makeGoogleAdsRequest({
+            externalUserId,
+            accountId,
+            path: `/${batchJobResourceName}:listResults`,
+            method: 'GET',
+            loginCustomerId,
+          });
+          break;
+        }
+      } catch (e) {
+        console.log('Polling batch job status...', e.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      batchJob: batchJobResourceName,
+      results,
+    });
+  } catch (error) {
+    console.error('Error creating complete campaign:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/campaigns', async (req, res) => {
   try {
     const { externalUserId, accountId, customerId, loginCustomerId } = req.query;

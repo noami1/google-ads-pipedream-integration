@@ -144,6 +144,45 @@
   </div>
 
   <div class="card">
+    <h2>Step 4: Generate Keyword Ideas</h2>
+    <div class="grid">
+      <div>
+        <label for="keyword-input">Keywords (comma separated):</label>
+        <input type="text" id="keyword-input" placeholder="e.g., digital marketing, seo">
+      </div>
+      <div>
+        <label for="url-input">URL (optional):</label>
+        <input type="text" id="url-input" placeholder="e.g., https://example.com">
+      </div>
+    </div>
+    <div class="grid">
+      <div>
+        <label for="language-select">Language:</label>
+        <select id="language-select">
+          <option value="languageConstants/1000">English</option>
+          <option value="languageConstants/1027">Hebrew</option>
+          <option value="languageConstants/1004">Spanish</option>
+          <option value="languageConstants/1001">German</option>
+          <option value="languageConstants/1002">French</option>
+        </select>
+      </div>
+      <div>
+        <label for="geo-select">Location:</label>
+        <select id="geo-select">
+          <option value="geoTargetConstants/2376">Israel</option>
+          <option value="geoTargetConstants/2840">United States</option>
+          <option value="geoTargetConstants/2826">United Kingdom</option>
+          <option value="geoTargetConstants/2276">Germany</option>
+          <option value="geoTargetConstants/2250">France</option>
+        </select>
+      </div>
+    </div>
+    <button onclick="generateKeywordIdeas()" id="keyword-btn" disabled>Generate Keyword Ideas</button>
+    <div id="keyword-status"></div>
+    <div id="keywords-list" class="list-container" style="max-height: 400px;"></div>
+  </div>
+
+  <div class="card">
     <h2>Raw API Response</h2>
     <pre id="raw-response">Click "Load Accessible Customers" to start...</pre>
   </div>
@@ -325,21 +364,6 @@
       }
     }
 
-    async function selectCustomer(customerId) {
-      selectedCustomerId = customerId;
-      selectedCampaignId = null;
-      selectedAdGroupId = null;
-      document.getElementById('campaigns-list').innerHTML = '';
-      document.getElementById('adgroups-list').innerHTML = '';
-      document.getElementById('ads-list').innerHTML = '';
-      
-      document.querySelectorAll('#customers-list .item').forEach(el => {
-        el.classList.toggle('selected', el.textContent.includes(customerId));
-      });
-      
-      await loadCampaigns(customerId);
-    }
-
     async function loadCampaigns(customerId) {
       try {
         showStatus('data-status', 'Loading campaigns...', 'info');
@@ -501,6 +525,101 @@
       } catch (error) {
         showStatus('data-status', `Error: ${error.message}`, 'error');
       }
+    }
+
+    async function generateKeywordIdeas() {
+      if (!selectedAccountId || !selectedCustomerId) {
+        showStatus('keyword-status', 'Please select a customer first', 'error');
+        return;
+      }
+
+      const keywordsInput = document.getElementById('keyword-input').value.trim();
+      const urlInput = document.getElementById('url-input').value.trim();
+      
+      if (!keywordsInput && !urlInput) {
+        showStatus('keyword-status', 'Please enter at least one keyword or URL', 'error');
+        return;
+      }
+
+      const keywords = keywordsInput ? keywordsInput.split(',').map(k => k.trim()).filter(k => k) : [];
+      const language = document.getElementById('language-select').value;
+      const geo = document.getElementById('geo-select').value;
+
+      try {
+        showStatus('keyword-status', 'Generating keyword ideas...', 'info');
+        
+        const body = {
+          externalUserId: currentUserId,
+          accountId: selectedAccountId,
+          language,
+          geoTargetConstants: [geo],
+        };
+        
+        if (keywords.length) body.keywords = keywords;
+        if (urlInput) body.url = urlInput;
+
+        const response = await fetch(`/api/customers/${selectedCustomerId}/generateKeywordIdeas`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        
+        if (!response.ok) throw new Error((await response.json()).error);
+        
+        const data = await response.json();
+        showRawResponse(data);
+        
+        const results = data.results || [];
+        const listEl = document.getElementById('keywords-list');
+        
+        if (results.length === 0) {
+          listEl.innerHTML = '<p style="color:#666;">No keyword ideas found.</p>';
+          showStatus('keyword-status', 'No keyword ideas found', 'info');
+          return;
+        }
+        
+        listEl.innerHTML = results.slice(0, 50).map(r => {
+          const kw = r.keywordIdeaMetrics || {};
+          const text = r.text || 'N/A';
+          const competition = kw.competition || 'N/A';
+          const avgSearches = kw.avgMonthlySearches || 'N/A';
+          const lowBid = kw.lowTopOfPageBidMicros ? formatMicros(kw.lowTopOfPageBidMicros) : 'N/A';
+          const highBid = kw.highTopOfPageBidMicros ? formatMicros(kw.highTopOfPageBidMicros) : 'N/A';
+          return `
+            <div class="item">
+              <div class="item-header">
+                <strong>${text}</strong>
+                <span class="badge ${competition.toLowerCase()}">${competition}</span>
+              </div>
+              <div class="item-details">
+                Avg Monthly Searches: ${avgSearches}<br>
+                Bid Range: ${lowBid} - ${highBid}
+              </div>
+            </div>
+          `;
+        }).join('');
+        
+        showStatus('keyword-status', `Found ${results.length} keyword ideas (showing first 50)`, 'success');
+      } catch (error) {
+        showStatus('keyword-status', `Error: ${error.message}`, 'error');
+      }
+    }
+
+    function selectCustomer(customerId) {
+      selectedCustomerId = customerId;
+      selectedCampaignId = null;
+      selectedAdGroupId = null;
+      document.getElementById('campaigns-list').innerHTML = '';
+      document.getElementById('adgroups-list').innerHTML = '';
+      document.getElementById('ads-list').innerHTML = '';
+      document.getElementById('keywords-list').innerHTML = '';
+      
+      document.querySelectorAll('#customers-list .item').forEach(el => {
+        el.classList.toggle('selected', el.textContent.includes(customerId));
+      });
+      
+      document.getElementById('keyword-btn').disabled = false;
+      loadCampaigns(customerId);
     }
 
     document.addEventListener('DOMContentLoaded', saveUserId);
