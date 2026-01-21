@@ -27,9 +27,9 @@ const {
   PIPEDREAM_CLIENT_SECRET,
   PIPEDREAM_PROJECT_ID,
   PIPEDREAM_PROJECT_ENVIRONMENT = 'development',
+  GOOGLE_ADS_DEVELOPER_TOKEN,
 } = process.env;
 
-// Initialize Pipedream client
 const client = createBackendClient({
   credentials: {
     clientId: PIPEDREAM_CLIENT_ID,
@@ -285,47 +285,40 @@ app.post('/api/run-action', async (req, res) => {
   }
 });
 
-const GOOGLE_ADS_VERSION = 'v18';
+const GOOGLE_ADS_VERSION = 'v19';
+const GOOGLE_ADS_PROXY_URL = 'https://googleads.m.pipedream.net';
 
 async function makeGoogleAdsRequest({ externalUserId, accountId, path, method = 'GET', body = null, loginCustomerId = null }) {
-  const accessToken = await getPipedreamAccessToken();
-  
-  const upstreamUrl = `https://googleads.googleapis.com/${GOOGLE_ADS_VERSION}${path}`;
-  const encodedUrl = Buffer.from(upstreamUrl).toString('base64url');
-  
-  const proxyUrl = `https://api.pipedream.com/v1/connect/${PIPEDREAM_PROJECT_ID}/proxy/${encodedUrl}?external_user_id=${encodeURIComponent(externalUserId)}&account_id=${encodeURIComponent(accountId)}`;
-  
-  const headers = {
-    'Authorization': `Bearer ${accessToken}`,
-    'x-pd-environment': PIPEDREAM_PROJECT_ENVIRONMENT,
+  const googleAdsRequestBody = {
+    url: `/${GOOGLE_ADS_VERSION}${path}`,
+    method: method.toUpperCase(),
   };
   
-  if (loginCustomerId) {
-    headers['x-pd-proxy-login-customer-id'] = loginCustomerId;
-  }
-  
   if (body) {
-    headers['Content-Type'] = 'application/json';
+    googleAdsRequestBody.data = body;
   }
 
-  const fetchOptions = { method, headers };
-  if (body) {
-    fetchOptions.body = JSON.stringify(body);
-  }
+  console.log(`Google Ads ${method} ${GOOGLE_ADS_PROXY_URL}${googleAdsRequestBody.url}`);
+  console.log('Request:', JSON.stringify(googleAdsRequestBody, null, 2));
 
-  console.log(`Google Ads ${method} ${path}`);
+  const response = await client.makeProxyRequest(
+    {
+      searchParams: {
+        external_user_id: externalUserId,
+        account_id: accountId,
+      },
+    },
+    {
+      url: GOOGLE_ADS_PROXY_URL,
+      options: {
+        method: 'POST',
+        body: googleAdsRequestBody,
+      },
+    }
+  );
   
-  const response = await fetch(proxyUrl, fetchOptions);
-  const text = await response.text();
-  
-  console.log(`Response: ${response.status}`, text.substring(0, 500));
-  
-  if (!response.ok) {
-    console.error(`Google Ads API error: ${response.status}`, text);
-    throw new Error(`Google Ads API error: ${response.status} - ${text}`);
-  }
-  
-  return text ? JSON.parse(text) : { status: response.status };
+  console.log('Response:', JSON.stringify(response, null, 2).substring(0, 500));
+  return response;
 }
 
 app.get('/api/customers', async (req, res) => {
@@ -400,6 +393,31 @@ app.post('/api/customers/:customerId/googleAds:search', async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error searching:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/customers/:customerId/:resource/mutate', async (req, res) => {
+  try {
+    const { customerId, resource } = req.params;
+    const { externalUserId, accountId, operations, loginCustomerId } = req.body;
+    
+    if (!externalUserId || !accountId || !operations) {
+      return res.status(400).json({ error: 'externalUserId, accountId, and operations are required' });
+    }
+    
+    const result = await makeGoogleAdsRequest({
+      externalUserId,
+      accountId,
+      path: `/customers/${customerId}/${resource}:mutate`,
+      method: 'POST',
+      body: { operations },
+      loginCustomerId,
+    });
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Error mutating:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -528,12 +546,74 @@ app.get('/api/ads', async (req, res) => {
   }
 });
 
+app.get('/api/account-details/:accountId', async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const { externalUserId } = req.query;
+    
+    if (!externalUserId) {
+      return res.status(400).json({ error: 'externalUserId is required' });
+    }
+
+    const accessToken = await getPipedreamAccessToken();
+    
+    const response = await fetch(
+      `https://api.pipedream.com/v1/connect/${PIPEDREAM_PROJECT_ID}/accounts/${accountId}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'x-pd-environment': PIPEDREAM_PROJECT_ENVIRONMENT,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Failed to get account details: ${response.status} - ${text}`);
+    }
+
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    console.error('Error getting account details:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/test-simple', async (req, res) => {
+  try {
+    const { externalUserId, accountId, customerId } = req.query;
+    
+    if (!externalUserId || !accountId || !customerId) {
+      return res.status(400).json({ error: 'externalUserId, accountId, and customerId are required' });
+    }
+    
+    const query = `SELECT customer.id, customer.descriptive_name FROM customer LIMIT 1`;
+    
+    const result = await makeGoogleAdsRequest({
+      externalUserId,
+      accountId,
+      path: `/customers/${customerId}/googleAds:search`,
+      method: 'POST',
+      body: { query },
+      loginCustomerId: customerId,
+    });
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Error in test-simple:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
   console.log(`\nEndpoints:`);
   console.log(`  POST /api/connect-token      - Get connect token for OAuth`);
   console.log(`  GET  /api/accounts           - List connected Google Ads accounts`);
+  console.log(`  GET  /api/account-details/:id - Get account details (includes customer_id)`);
+  console.log(`  GET  /api/test-simple        - Simple test query (needs customerId)`);
   console.log(`  GET  /api/customers          - List accessible customers (via proxy)`);
   console.log(`  GET  /api/customers/:id      - Get customer details`);
   console.log(`  GET  /api/campaigns          - List campaigns (requires customerId)`);
