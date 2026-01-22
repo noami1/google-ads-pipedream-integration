@@ -722,16 +722,26 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
     }
 
     // 6. Promotion Asset
-    if (promotion && promotion.promotionTarget) {
+    if (promotion && (promotion.promotionTarget || promotion.finalUrl)) {
       const promotionAssetTempId = assetTempId--;
       const promotionAsset = {
         resourceName: `customers/${customerId}/assets/${promotionAssetTempId}`,
         promotionAsset: {
-          promotionTarget: promotion.promotionTarget.substring(0, 20),
-          redemptionStartDate: promotion.startDate,
-          redemptionEndDate: promotion.endDate,
+          promotionTarget: (promotion.promotionTarget || '').substring(0, 20),
+          languageCode: promotion.languageCode || 'en',
         }
       };
+
+      if (promotion.finalUrl) {
+        promotionAsset.finalUrls = [promotion.finalUrl];
+      }
+
+      if (promotion.redemptionStartDate) {
+        promotionAsset.promotionAsset.redemptionStartDate = promotion.redemptionStartDate;
+      }
+      if (promotion.redemptionEndDate) {
+        promotionAsset.promotionAsset.redemptionEndDate = promotion.redemptionEndDate;
+      }
 
       if (promotion.moneyAmountOff) {
         promotionAsset.promotionAsset.moneyAmountOff = {
@@ -739,10 +749,10 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
           currencyCode: promotion.moneyAmountOff.currencyCode || 'USD'
         };
       } else if (promotion.percentOff) {
-        promotionAsset.promotionAsset.percentOff = promotion.percentOff * 1000000; // micros
+        promotionAsset.promotionAsset.percentOff = promotion.percentOff * 1000000;
       }
 
-      if (promotion.occasion && promotion.occasion !== 'NONE') {
+      if (promotion.occasion && promotion.occasion !== 'NONE' && promotion.occasion !== '') {
         promotionAsset.promotionAsset.occasion = promotion.occasion;
       }
       if (promotion.promotionCode) {
