@@ -611,7 +611,8 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
               targetSearchNetwork: true,
               targetContentNetwork: false,
               targetPartnerSearchNetwork: false,
-            }
+            },
+            containsEuPoliticalAdvertising: 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING',
           }
         }
       }
@@ -882,6 +883,69 @@ app.get('/api/account-details/:accountId', async (req, res) => {
   }
 });
 
+// Get keywords for an ad group
+app.get('/api/keywords', async (req, res) => {
+  try {
+    const { externalUserId, accountId, customerId, adGroupId } = req.query;
+    
+    if (!externalUserId || !accountId || !customerId || !adGroupId) {
+      return res.status(400).json({ error: 'externalUserId, accountId, customerId, and adGroupId are required' });
+    }
+
+    const query = `
+      SELECT 
+        ad_group_criterion.criterion_id,
+        ad_group_criterion.keyword.text,
+        ad_group_criterion.keyword.match_type,
+        ad_group_criterion.status,
+        ad_group_criterion.resource_name
+      FROM ad_group_criterion
+      WHERE ad_group.id = ${adGroupId}
+        AND ad_group_criterion.type = 'KEYWORD'
+    `;
+
+    const result = await makeGoogleAdsRequest({
+      externalUserId,
+      accountId,
+      path: `/customers/${customerId}/googleAds:search`,
+      method: 'POST',
+      body: { query },
+      loginCustomerId: customerId,
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching keywords:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Mutate ad group criteria (keywords)
+app.post('/api/customers/:customerId/adGroupCriteria/mutate', async (req, res) => {
+  try {
+    const { customerId } = req.params;
+    const { externalUserId, accountId, operations, loginCustomerId } = req.body;
+
+    if (!externalUserId || !accountId || !operations) {
+      return res.status(400).json({ error: 'externalUserId, accountId, and operations are required' });
+    }
+
+    const result = await makeGoogleAdsRequest({
+      externalUserId,
+      accountId,
+      path: `/customers/${customerId}/adGroupCriteria:mutate`,
+      method: 'POST',
+      body: { operations },
+      loginCustomerId: loginCustomerId || customerId,
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error mutating ad group criteria:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/test-simple', async (req, res) => {
   try {
     const { externalUserId, accountId, customerId } = req.query;
@@ -924,4 +988,6 @@ app.listen(PORT, () => {
   console.log(`  POST /api/customers/:id/googleAds:search - Run GAQL query`);
   console.log(`  GET  /api/google-ads-actions - List available Pipedream actions`);
   console.log(`  POST /api/run-action         - Run a Google Ads action`);
+  console.log(`  GET  /api/keywords           - List keywords for ad group`);
+  console.log(`  POST /api/customers/:id/adGroupCriteria/mutate - Update keywords`);
 });

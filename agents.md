@@ -283,3 +283,35 @@ curl -X POST "http://localhost:3000/api/customers/6388991727/createSimpleCampaig
   "containsEuPoliticalAdvertising": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING"
 }
 ```
+
+---
+
+## Important: Ad Group Structure
+
+**Keywords belong to the Ad Group, NOT to individual Ads.**
+
+```
+Campaign
+└── Ad Group
+    ├── Keywords (shared by ALL ads in this ad group)
+    │   ├── "digital marketing"
+    │   ├── "online advertising"
+    │   └── "seo services"
+    │
+    └── Ads (all triggered by the SAME keywords above)
+        ├── Ad 1 (Responsive Search Ad)
+        └── Ad 2 (Responsive Search Ad)
+```
+
+### Key Insight
+
+- Multiple Ads within the same Ad Group **share the same keywords**
+- Keywords are defined at the **Ad Group level**, not the Ad level
+- When a user searches for a keyword, Google chooses which Ad to show from the Ad Group
+- To use different keywords, you need **different Ad Groups**
+
+| Resource | Contains |
+|----------|----------|
+| Campaign | Budget, settings, multiple Ad Groups |
+| Ad Group | Keywords, bids, multiple Ads |
+| Ad | Headlines, descriptions, URLs (NO keywords) |

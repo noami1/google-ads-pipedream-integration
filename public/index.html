@@ -48,6 +48,12 @@
     button:disabled { background: #ccc; cursor: not-allowed; }
     button.secondary { background: #666; }
     button.secondary:hover { background: #444; }
+    button.toggle-enable { background: #28a745; }
+    button.toggle-enable:hover { background: #218838; }
+    button.toggle-pause { background: #ffc107; color: #212529; }
+    button.toggle-pause:hover { background: #e0a800; }
+    button.danger { background: #dc3545; }
+    button.danger:hover { background: #c82333; }
     .status {
       padding: 10px;
       border-radius: 4px;
@@ -94,6 +100,15 @@
       max-height: 250px;
       overflow-y: auto;
     }
+    
+    /* Keyword Management Styles */
+    .keyword-item { display: flex; align-items: center; gap: 8px; padding: 8px; border-bottom: 1px solid #eee; }
+    .keyword-text { flex: 1; font-weight: 500; }
+    .match-type { padding: 2px 6px; border-radius: 3px; font-size: 11px; }
+    .match-type.BROAD { background: #e3f2fd; color: #1565c0; }
+    .match-type.PHRASE { background: #fff3e0; color: #e65100; }
+    .match-type.EXACT { background: #e8f5e9; color: #2e7d32; }
+    select.match-select { padding: 4px; font-size: 12px; border-radius: 4px; }
     
     /* Detail Modal Styles */
     .modal-overlay {
@@ -333,6 +348,14 @@
         <div id="ads-list" class="list-container"></div>
       </div>
     </div>
+    
+    <!-- Keywords Section -->
+    <div class="card" style="margin-top: 20px;">
+      <h3>Keywords</h3>
+      <p style="font-size: 12px; color: #666; margin-bottom: 10px;">Keywords belong to the Ad Group and are shared by all Ads</p>
+      <div id="adgroup-keywords-list"></div>
+      <div id="keywords-status" class="status"></div>
+    </div>
   </div>
 
   <div class="card">
@@ -372,6 +395,67 @@
     <button onclick="generateKeywordIdeas()" id="keyword-btn" disabled>Generate Keyword Ideas</button>
     <div id="keyword-status"></div>
     <div id="keywords-list" class="list-container" style="max-height: 400px;"></div>
+  </div>
+
+  <div class="card">
+    <h2>Step 5: Create Complete Campaign</h2>
+    <div class="grid">
+      <div>
+        <label for="campaign-name">Campaign Name:</label>
+        <input type="text" id="campaign-name" placeholder="My New Campaign" required>
+      </div>
+      <div>
+        <label for="campaign-budget">Daily Budget (USD):</label>
+        <input type="number" id="campaign-budget" step="0.01" min="0.01" value="0.10" required>
+      </div>
+    </div>
+    <div class="grid">
+      <div>
+        <label for="campaign-status">Status:</label>
+        <select id="campaign-status">
+          <option value="PAUSED" selected>PAUSED</option>
+          <option value="ENABLED">ENABLED</option>
+        </select>
+      </div>
+      <div>
+        <label for="adgroup-name">Ad Group Name:</label>
+        <input type="text" id="adgroup-name" placeholder="My Ad Group" required>
+      </div>
+    </div>
+    <div>
+      <label for="campaign-keywords">Keywords (comma-separated):</label>
+      <textarea id="campaign-keywords" placeholder="keyword 1, keyword 2, keyword 3" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;margin-bottom:15px;font-size:14px;min-height:60px;resize:vertical;"></textarea>
+    </div>
+    <div class="grid">
+      <div>
+        <label for="headline-1">Headline 1 (max 30 chars):</label>
+        <input type="text" id="headline-1" maxlength="30" placeholder="Your First Headline" required>
+      </div>
+      <div>
+        <label for="headline-2">Headline 2 (max 30 chars):</label>
+        <input type="text" id="headline-2" maxlength="30" placeholder="Your Second Headline" required>
+      </div>
+    </div>
+    <div>
+      <label for="headline-3">Headline 3 (max 30 chars):</label>
+      <input type="text" id="headline-3" maxlength="30" placeholder="Your Third Headline" required>
+    </div>
+    <div class="grid">
+      <div>
+        <label for="description-1">Description 1 (max 90 chars):</label>
+        <input type="text" id="description-1" maxlength="90" placeholder="Your first description goes here" required>
+      </div>
+      <div>
+        <label for="description-2">Description 2 (max 90 chars):</label>
+        <input type="text" id="description-2" maxlength="90" placeholder="Your second description goes here" required>
+      </div>
+    </div>
+    <div>
+      <label for="final-url">Final URL:</label>
+      <input type="url" id="final-url" placeholder="https://example.com" required>
+    </div>
+    <button onclick="createCompleteCampaign()" id="create-campaign-btn" disabled>Create Complete Campaign</button>
+    <div id="create-campaign-status"></div>
   </div>
 
   <div class="card">
@@ -423,7 +507,7 @@
     }
 
     function clearAllLists() {
-      ['accounts-list', 'customers-list', 'campaigns-list', 'adgroups-list', 'ads-list'].forEach(id => {
+      ['accounts-list', 'customers-list', 'campaigns-list', 'adgroups-list', 'ads-list', 'adgroup-keywords-list'].forEach(id => {
         document.getElementById(id).innerHTML = '';
       });
     }
@@ -589,6 +673,8 @@
                 <span>
                   ${formatStatus(c.status)}
                   <button onclick="event.stopPropagation(); showCampaignDetails('${c.id}', '${escapedName}')" style="margin-left:8px;padding:4px 10px;font-size:11px;">Details</button>
+                  <button class="${c.status === 'ENABLED' ? 'toggle-pause' : 'toggle-enable'}" onclick="event.stopPropagation(); toggleCampaignStatus('${c.id}', '${c.status}')" style="margin-left:4px;padding:4px 10px;font-size:11px;">${c.status === 'ENABLED' ? 'Pause' : 'Enable'}</button>
+                  <button class="danger" onclick="event.stopPropagation(); deleteCampaign('${c.id}', '${escapedName}')" style="margin-left:4px;padding:4px 10px;font-size:11px;">Delete</button>
                 </span>
               </div>
               <div class="item-details">
@@ -651,6 +737,8 @@
                 <span>
                   ${formatStatus(ag.status)}
                   <button onclick="event.stopPropagation(); showAdGroupDetails('${ag.id}', '${escapedName}')" style="margin-left:8px;padding:4px 10px;font-size:11px;">Details</button>
+                  <button class="${ag.status === 'ENABLED' ? 'toggle-pause' : 'toggle-enable'}" onclick="event.stopPropagation(); toggleAdGroupStatus('${ag.id}', '${ag.status}')" style="margin-left:4px;padding:4px 10px;font-size:11px;">${ag.status === 'ENABLED' ? 'Pause' : 'Enable'}</button>
+                  <button class="danger" onclick="event.stopPropagation(); deleteAdGroup('${ag.id}', '${escapedName}')" style="margin-left:4px;padding:4px 10px;font-size:11px;">Delete</button>
                 </span>
               </div>
               <div class="item-details">
@@ -671,12 +759,14 @@
     async function selectAdGroup(adGroupId) {
       selectedAdGroupId = adGroupId;
       document.getElementById('ads-list').innerHTML = '';
+      document.getElementById('adgroup-keywords-list').innerHTML = '';
       
       document.querySelectorAll('#adgroups-list .item').forEach(el => {
         el.classList.toggle('selected', el.textContent.includes(`ID: ${adGroupId}`));
       });
       
       await loadAds(adGroupId);
+      await loadKeywords(adGroupId);
     }
 
     async function loadAds(adGroupId) {
@@ -713,6 +803,8 @@
                 <span>
                   ${formatStatus(aga.status)}
                   <button onclick="showAdDetails('${ad.id}', '${aga.resourceName || ''}')" style="margin-left:8px;padding:4px 10px;font-size:11px;">Details</button>
+                  <button class="${aga.status === 'ENABLED' ? 'toggle-pause' : 'toggle-enable'}" onclick="toggleAdStatus('${ad.id}', '${aga.status}', '${selectedAdGroupId}')" style="margin-left:4px;padding:4px 10px;font-size:11px;">${aga.status === 'ENABLED' ? 'Pause' : 'Enable'}</button>
+                  <button class="danger" onclick="deleteAd('${ad.id}', '${selectedAdGroupId}')" style="margin-left:4px;padding:4px 10px;font-size:11px;">Delete</button>
                 </span>
               </div>
               <div class="item-details">
@@ -727,6 +819,147 @@
         showStatus('data-status', `Found ${results.length} ad(s)`, 'success');
       } catch (error) {
         showStatus('data-status', `Error: ${error.message}`, 'error');
+      }
+    }
+
+    async function loadKeywords(adGroupId) {
+      if (!adGroupId) return;
+      
+      const keywordsList = document.getElementById('adgroup-keywords-list');
+      keywordsList.innerHTML = '<p>Loading keywords...</p>';
+      
+      try {
+        const response = await fetch(`/api/keywords?externalUserId=${currentUserId}&accountId=${selectedAccountId}&customerId=${selectedCustomerId}&adGroupId=${adGroupId}`);
+        const data = await response.json();
+        
+        if (!data.results || data.results.length === 0) {
+          keywordsList.innerHTML = '<p style="color:#666;">No keywords found for this ad group</p>';
+          return;
+        }
+        
+        keywordsList.innerHTML = data.results.map(r => {
+          const kw = r.adGroupCriterion;
+          const criterionId = kw.criterionId;
+          const text = kw.keyword?.text || 'Unknown';
+          const matchType = kw.keyword?.matchType || 'BROAD';
+          const status = kw.status || 'ENABLED';
+          const resourceName = kw.resourceName;
+          const escapedText = text.replace(/'/g, "\\'");
+          
+          return `
+            <div class="keyword-item" data-criterion-id="${criterionId}">
+              <span class="keyword-text">${text}</span>
+              <span class="match-type ${matchType}">${matchType}</span>
+              <select class="match-select" onchange="updateKeywordMatchType('${resourceName}', this.value, '${escapedText}')">
+                <option value="BROAD" ${matchType === 'BROAD' ? 'selected' : ''}>Broad</option>
+                <option value="PHRASE" ${matchType === 'PHRASE' ? 'selected' : ''}>Phrase</option>
+                <option value="EXACT" ${matchType === 'EXACT' ? 'selected' : ''}>Exact</option>
+              </select>
+              <button class="${status === 'ENABLED' ? 'toggle-pause' : 'toggle-enable'}" 
+                      onclick="toggleKeywordStatus('${resourceName}', '${status}')"
+                      style="padding:4px 8px;font-size:11px;">
+                ${status === 'ENABLED' ? 'Pause' : 'Enable'}
+              </button>
+              <button class="danger" onclick="deleteKeyword('${resourceName}', '${escapedText}')" 
+                      style="padding:4px 8px;font-size:11px;">
+                Remove
+              </button>
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        keywordsList.innerHTML = `<p style="color:red;">Error: ${error.message}</p>`;
+      }
+    }
+
+    async function updateKeywordMatchType(resourceName, newMatchType, keywordText) {
+      try {
+        showStatus('keywords-status', 'Updating match type...', 'info');
+        
+        await fetch(`/api/customers/${selectedCustomerId}/adGroupCriteria/mutate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            externalUserId: currentUserId,
+            accountId: selectedAccountId,
+            operations: [{ remove: resourceName }]
+          })
+        });
+        
+        const response = await fetch(`/api/customers/${selectedCustomerId}/adGroupCriteria/mutate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            externalUserId: currentUserId,
+            accountId: selectedAccountId,
+            operations: [{
+              create: {
+                adGroup: `customers/${selectedCustomerId}/adGroups/${selectedAdGroupId}`,
+                status: 'ENABLED',
+                keyword: {
+                  text: keywordText,
+                  matchType: newMatchType
+                }
+              }
+            }]
+          })
+        });
+        
+        if (!response.ok) throw new Error((await response.json()).error);
+        showStatus('keywords-status', `Match type updated to ${newMatchType}`, 'success');
+        await loadKeywords(selectedAdGroupId);
+      } catch (error) {
+        showStatus('keywords-status', `Error: ${error.message}`, 'error');
+        await loadKeywords(selectedAdGroupId);
+      }
+    }
+
+    async function toggleKeywordStatus(resourceName, currentStatus) {
+      const newStatus = currentStatus === 'ENABLED' ? 'PAUSED' : 'ENABLED';
+      try {
+        showStatus('keywords-status', 'Updating keyword status...', 'info');
+        const response = await fetch(`/api/customers/${selectedCustomerId}/adGroupCriteria/mutate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            externalUserId: currentUserId,
+            accountId: selectedAccountId,
+            operations: [{
+              update: {
+                resourceName: resourceName,
+                status: newStatus
+              },
+              updateMask: 'status'
+            }]
+          })
+        });
+        if (!response.ok) throw new Error((await response.json()).error);
+        showStatus('keywords-status', `Keyword ${newStatus.toLowerCase()}`, 'success');
+        await loadKeywords(selectedAdGroupId);
+      } catch (error) {
+        showStatus('keywords-status', `Error: ${error.message}`, 'error');
+      }
+    }
+
+    async function deleteKeyword(resourceName, keywordText) {
+      if (!confirm(`Remove keyword "${keywordText}"?`)) return;
+      
+      try {
+        showStatus('keywords-status', 'Removing keyword...', 'info');
+        const response = await fetch(`/api/customers/${selectedCustomerId}/adGroupCriteria/mutate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            externalUserId: currentUserId,
+            accountId: selectedAccountId,
+            operations: [{ remove: resourceName }]
+          })
+        });
+        if (!response.ok) throw new Error((await response.json()).error);
+        showStatus('keywords-status', 'Keyword removed', 'success');
+        await loadKeywords(selectedAdGroupId);
+      } catch (error) {
+        showStatus('keywords-status', `Error: ${error.message}`, 'error');
       }
     }
 
@@ -822,7 +1055,120 @@
       });
       
       document.getElementById('keyword-btn').disabled = false;
+      document.getElementById('create-campaign-btn').disabled = false;
       loadCampaigns(customerId);
+    }
+
+    async function createCompleteCampaign() {
+      if (!selectedAccountId || !selectedCustomerId) {
+        showStatus('create-campaign-status', 'Please select a customer first', 'error');
+        return;
+      }
+
+      const campaignName = document.getElementById('campaign-name').value.trim();
+      const budgetUsd = parseFloat(document.getElementById('campaign-budget').value);
+      const status = document.getElementById('campaign-status').value;
+      const adGroupName = document.getElementById('adgroup-name').value.trim();
+      const keywordsText = document.getElementById('campaign-keywords').value.trim();
+      const headline1 = document.getElementById('headline-1').value.trim();
+      const headline2 = document.getElementById('headline-2').value.trim();
+      const headline3 = document.getElementById('headline-3').value.trim();
+      const description1 = document.getElementById('description-1').value.trim();
+      const description2 = document.getElementById('description-2').value.trim();
+      const finalUrl = document.getElementById('final-url').value.trim();
+
+      if (!campaignName) {
+        showStatus('create-campaign-status', 'Campaign name is required', 'error');
+        return;
+      }
+      if (!budgetUsd || budgetUsd < 0.01) {
+        showStatus('create-campaign-status', 'Budget must be at least $0.01', 'error');
+        return;
+      }
+      if (!adGroupName) {
+        showStatus('create-campaign-status', 'Ad group name is required', 'error');
+        return;
+      }
+      if (!headline1 || !headline2 || !headline3) {
+        showStatus('create-campaign-status', 'All three headlines are required', 'error');
+        return;
+      }
+      if (headline1.length > 30 || headline2.length > 30 || headline3.length > 30) {
+        showStatus('create-campaign-status', 'Headlines must be 30 characters or less', 'error');
+        return;
+      }
+      if (!description1 || !description2) {
+        showStatus('create-campaign-status', 'Both descriptions are required', 'error');
+        return;
+      }
+      if (description1.length > 90 || description2.length > 90) {
+        showStatus('create-campaign-status', 'Descriptions must be 90 characters or less', 'error');
+        return;
+      }
+      if (!finalUrl) {
+        showStatus('create-campaign-status', 'Final URL is required', 'error');
+        return;
+      }
+
+      const keywords = keywordsText ? keywordsText.split(',').map(k => k.trim()).filter(k => k) : [];
+      const budgetInMicros = Math.round(budgetUsd * 1000000);
+
+      const btn = document.getElementById('create-campaign-btn');
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Creating...';
+
+      try {
+        showStatus('create-campaign-status', 'Creating campaign...', 'info');
+
+        const response = await fetch(`/api/customers/${selectedCustomerId}/createCompleteCampaign`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            externalUserId: currentUserId,
+            accountId: selectedAccountId,
+            campaignName: campaignName,
+            budgetAmountMicros: budgetInMicros,
+            status: status,
+            adGroupName: adGroupName,
+            keywords: keywords,
+            adHeadlines: [headline1, headline2, headline3],
+            adDescriptions: [description1, description2],
+            finalUrl: finalUrl
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to create campaign');
+        }
+
+        const data = await response.json();
+        showRawResponse(data);
+
+        showStatus('create-campaign-status', 'Campaign created successfully!', 'success');
+
+        document.getElementById('campaign-name').value = '';
+        document.getElementById('campaign-budget').value = '0.10';
+        document.getElementById('campaign-status').value = 'PAUSED';
+        document.getElementById('adgroup-name').value = '';
+        document.getElementById('campaign-keywords').value = '';
+        document.getElementById('headline-1').value = '';
+        document.getElementById('headline-2').value = '';
+        document.getElementById('headline-3').value = '';
+        document.getElementById('description-1').value = '';
+        document.getElementById('description-2').value = '';
+        document.getElementById('final-url').value = '';
+
+        if (selectedCustomerId) {
+          await loadCampaigns(selectedCustomerId);
+        }
+      } catch (error) {
+        showStatus('create-campaign-status', `Error: ${error.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
     }
 
     document.addEventListener('DOMContentLoaded', saveUserId);
@@ -1200,6 +1546,168 @@
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') closeModal();
     });
+
+    async function toggleCampaignStatus(campaignId, currentStatus) {
+      const newStatus = currentStatus === 'ENABLED' ? 'PAUSED' : 'ENABLED';
+      try {
+        showStatus('data-status', `Updating campaign status...`, 'info');
+        const response = await fetch(`/api/customers/${selectedCustomerId}/campaigns/mutate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            externalUserId: currentUserId,
+            accountId: selectedAccountId,
+            operations: [{
+              update: {
+                resourceName: `customers/${selectedCustomerId}/campaigns/${campaignId}`,
+                status: newStatus
+              },
+              updateMask: 'status'
+            }]
+          })
+        });
+        if (!response.ok) throw new Error((await response.json()).error);
+        showStatus('data-status', `Campaign ${newStatus.toLowerCase()}`, 'success');
+        await loadCampaigns(selectedCustomerId);
+      } catch (error) {
+        showStatus('data-status', `Error: ${error.message}`, 'error');
+      }
+    }
+
+    async function toggleAdGroupStatus(adGroupId, currentStatus) {
+      const newStatus = currentStatus === 'ENABLED' ? 'PAUSED' : 'ENABLED';
+      try {
+        showStatus('data-status', `Updating ad group status...`, 'info');
+        const response = await fetch(`/api/customers/${selectedCustomerId}/adGroups/mutate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            externalUserId: currentUserId,
+            accountId: selectedAccountId,
+            operations: [{
+              update: {
+                resourceName: `customers/${selectedCustomerId}/adGroups/${adGroupId}`,
+                status: newStatus
+              },
+              updateMask: 'status'
+            }]
+          })
+        });
+        if (!response.ok) throw new Error((await response.json()).error);
+        showStatus('data-status', `Ad group ${newStatus.toLowerCase()}`, 'success');
+        await loadAdGroups(selectedCampaignId);
+      } catch (error) {
+        showStatus('data-status', `Error: ${error.message}`, 'error');
+      }
+    }
+
+    async function toggleAdStatus(adId, currentStatus, adGroupId) {
+      const newStatus = currentStatus === 'ENABLED' ? 'PAUSED' : 'ENABLED';
+      try {
+        showStatus('data-status', `Updating ad status...`, 'info');
+        const response = await fetch(`/api/customers/${selectedCustomerId}/adGroupAds/mutate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            externalUserId: currentUserId,
+            accountId: selectedAccountId,
+            operations: [{
+              update: {
+                resourceName: `customers/${selectedCustomerId}/adGroupAds/${adGroupId}~${adId}`,
+                status: newStatus
+              },
+              updateMask: 'status'
+            }]
+          })
+        });
+        if (!response.ok) throw new Error((await response.json()).error);
+        showStatus('data-status', `Ad ${newStatus.toLowerCase()}`, 'success');
+        await loadAds(selectedAdGroupId);
+      } catch (error) {
+        showStatus('data-status', `Error: ${error.message}`, 'error');
+      }
+    }
+
+    async function deleteCampaign(campaignId, campaignName) {
+      if (!confirm(`Are you sure you want to delete campaign "${campaignName}"?\n\nThis will also delete all ad groups and ads within this campaign.`)) {
+        return;
+      }
+      try {
+        showStatus('data-status', `Deleting campaign...`, 'info');
+        const response = await fetch(`/api/customers/${selectedCustomerId}/campaigns/mutate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            externalUserId: currentUserId,
+            accountId: selectedAccountId,
+            operations: [{
+              remove: `customers/${selectedCustomerId}/campaigns/${campaignId}`
+            }]
+          })
+        });
+        if (!response.ok) throw new Error((await response.json()).error);
+        showStatus('data-status', `Campaign deleted`, 'success');
+        selectedCampaignId = null;
+        selectedAdGroupId = null;
+        document.getElementById('adgroups-list').innerHTML = '';
+        document.getElementById('ads-list').innerHTML = '';
+        await loadCampaigns(selectedCustomerId);
+      } catch (error) {
+        showStatus('data-status', `Error: ${error.message}`, 'error');
+      }
+    }
+
+    async function deleteAdGroup(adGroupId, adGroupName) {
+      if (!confirm(`Are you sure you want to delete ad group "${adGroupName}"?\n\nThis will also delete all ads within this ad group.`)) {
+        return;
+      }
+      try {
+        showStatus('data-status', `Deleting ad group...`, 'info');
+        const response = await fetch(`/api/customers/${selectedCustomerId}/adGroups/mutate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            externalUserId: currentUserId,
+            accountId: selectedAccountId,
+            operations: [{
+              remove: `customers/${selectedCustomerId}/adGroups/${adGroupId}`
+            }]
+          })
+        });
+        if (!response.ok) throw new Error((await response.json()).error);
+        showStatus('data-status', `Ad group deleted`, 'success');
+        selectedAdGroupId = null;
+        document.getElementById('ads-list').innerHTML = '';
+        await loadAdGroups(selectedCampaignId);
+      } catch (error) {
+        showStatus('data-status', `Error: ${error.message}`, 'error');
+      }
+    }
+
+    async function deleteAd(adId, adGroupId) {
+      if (!confirm(`Are you sure you want to delete this ad?`)) {
+        return;
+      }
+      try {
+        showStatus('data-status', `Deleting ad...`, 'info');
+        const response = await fetch(`/api/customers/${selectedCustomerId}/adGroupAds/mutate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            externalUserId: currentUserId,
+            accountId: selectedAccountId,
+            operations: [{
+              remove: `customers/${selectedCustomerId}/adGroupAds/${adGroupId}~${adId}`
+            }]
+          })
+        });
+        if (!response.ok) throw new Error((await response.json()).error);
+        showStatus('data-status', `Ad deleted`, 'success');
+        await loadAds(selectedAdGroupId);
+      } catch (error) {
+        showStatus('data-status', `Error: ${error.message}`, 'error');
+      }
+    }
   </script>
 </body>
 </html>
