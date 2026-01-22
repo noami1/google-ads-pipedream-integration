@@ -549,27 +549,58 @@ app.post('/api/customers/:customerId/createSimpleCampaign', async (req, res) => 
   }
 });
 
+function normalizeUrl(fullUrl) {
+  try {
+    const url = new URL(fullUrl);
+    const pathSegments = url.pathname.split('/').filter(s => s.length > 0);
+    return {
+      finalUrl: url.origin,
+      path1: (pathSegments[0] || '').substring(0, 15),
+      path2: (pathSegments[1] || '').substring(0, 15)
+    };
+  } catch (e) {
+    return { finalUrl: fullUrl, path1: '', path2: '' };
+  }
+}
+
+// Create a complete campaign with all assets via batch job
 app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) => {
   try {
     const { customerId } = req.params;
-    const { 
-      externalUserId, 
-      accountId, 
+    const {
+      externalUserId,
+      accountId,
       campaignName,
       budgetAmountMicros = 10000,
+      status = 'PAUSED',
       adGroupName,
       keywords = [],
       adHeadlines = [],
       adDescriptions = [],
       finalUrl,
-      status = 'PAUSED',
-      loginCustomerId 
+      displayPath1,
+      displayPath2,
+      // Optional extensions
+      promotion,
+      prices,
+      call,
+      callouts,
+      leadForm,
+      app: mobileApp,
+      loginCustomerId
     } = req.body;
-    
-    if (!externalUserId || !accountId || !campaignName) {
-      return res.status(400).json({ error: 'externalUserId, accountId, and campaignName are required' });
+
+    if (!externalUserId || !accountId) {
+      return res.status(400).json({ error: 'externalUserId and accountId are required' });
     }
 
+    // Normalize URL and extract paths
+    const urlParts = normalizeUrl(finalUrl || 'https://example.com');
+    const normalizedFinalUrl = urlParts.finalUrl;
+    const path1 = displayPath1 !== undefined ? displayPath1 : urlParts.path1;
+    const path2 = displayPath2 !== undefined ? displayPath2 : urlParts.path2;
+
+    // Create batch job
     const batchJobResult = await makeGoogleAdsRequest({
       externalUserId,
       accountId,
@@ -578,46 +609,52 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
       body: {
         operation: { create: {} }
       },
-      loginCustomerId,
+      loginCustomerId: loginCustomerId || customerId,
     });
 
     const batchJobResourceName = batchJobResult.result?.resourceName;
     if (!batchJobResourceName) {
-      throw new Error('Failed to create batch job: ' + JSON.stringify(batchJobResult));
+      throw new Error('Failed to create batch job');
     }
 
-    const mutateOperations = [
-      {
-        campaignBudgetOperation: {
-          create: {
-            resourceName: `customers/${customerId}/campaignBudgets/-1`,
-            name: `${campaignName} Budget`,
-            deliveryMethod: 'STANDARD',
-            amountMicros: String(budgetAmountMicros),
-          }
-        }
-      },
-      {
-        campaignOperation: {
-          create: {
-            resourceName: `customers/${customerId}/campaigns/-2`,
-            name: campaignName,
-            advertisingChannelType: 'SEARCH',
-            status,
-            manualCpc: {},
-            campaignBudget: `customers/${customerId}/campaignBudgets/-1`,
-            networkSettings: {
-              targetGoogleSearch: true,
-              targetSearchNetwork: true,
-              targetContentNetwork: false,
-              targetPartnerSearchNetwork: false,
-            },
-            containsEuPoliticalAdvertising: 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING',
-          }
+    // Build mutate operations
+    const mutateOperations = [];
+    let assetTempId = -10;
+
+    // 1. Campaign Budget (temp ID: -1)
+    mutateOperations.push({
+      campaignBudgetOperation: {
+        create: {
+          resourceName: `customers/${customerId}/campaignBudgets/-1`,
+          name: `${campaignName} Budget`,
+          deliveryMethod: 'STANDARD',
+          amountMicros: String(budgetAmountMicros),
         }
       }
-    ];
+    });
 
+    // 2. Campaign (temp ID: -2)
+    mutateOperations.push({
+      campaignOperation: {
+        create: {
+          resourceName: `customers/${customerId}/campaigns/-2`,
+          name: campaignName,
+          advertisingChannelType: 'SEARCH',
+          status,
+          manualCpc: {},
+          campaignBudget: `customers/${customerId}/campaignBudgets/-1`,
+          networkSettings: {
+            targetGoogleSearch: true,
+            targetSearchNetwork: true,
+            targetContentNetwork: false,
+            targetPartnerSearchNetwork: false,
+          },
+          containsEuPoliticalAdvertising: 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING',
+        }
+      }
+    });
+
+    // 3. Ad Group (temp ID: -3)
     if (adGroupName) {
       mutateOperations.push({
         adGroupOperation: {
@@ -631,94 +668,350 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
           }
         }
       });
+    }
 
-      keywords.forEach((keyword, idx) => {
+    // 4. Keywords
+    if (keywords && keywords.length > 0) {
+      keywords.forEach((keyword, index) => {
+        const kw = typeof keyword === 'string' ? { text: keyword, matchType: 'BROAD' } : keyword;
         mutateOperations.push({
           adGroupCriterionOperation: {
             create: {
               adGroup: `customers/${customerId}/adGroups/-3`,
               status: 'ENABLED',
               keyword: {
-                text: keyword,
-                matchType: 'BROAD',
+                text: kw.text,
+                matchType: kw.matchType || 'BROAD',
               }
             }
           }
         });
       });
-
-      if (adHeadlines.length >= 3 && adDescriptions.length >= 2 && finalUrl) {
-        mutateOperations.push({
-          adGroupAdOperation: {
-            create: {
-              adGroup: `customers/${customerId}/adGroups/-3`,
-              status: 'ENABLED',
-              ad: {
-                responsiveSearchAd: {
-                  headlines: adHeadlines.slice(0, 15).map(text => ({ text })),
-                  descriptions: adDescriptions.slice(0, 4).map(text => ({ text })),
-                },
-                finalUrls: [finalUrl],
-              }
-            }
-          }
-        });
-      }
     }
 
+    // 5. Responsive Search Ad
+    if (adHeadlines.length >= 2 && adDescriptions.length >= 2 && finalUrl) {
+      const headlines = adHeadlines.map(h => ({ text: h.substring(0, 30) }));
+      const descriptions = adDescriptions.map(d => ({ text: d.substring(0, 90) }));
+
+      const adOperation = {
+        adGroupAdOperation: {
+          create: {
+            adGroup: `customers/${customerId}/adGroups/-3`,
+            status: 'ENABLED',
+            ad: {
+              responsiveSearchAd: {
+                headlines,
+                descriptions,
+              },
+              finalUrls: [normalizedFinalUrl],
+            }
+          }
+        }
+      };
+
+      // Add display paths if provided
+      if (path1) {
+        adOperation.adGroupAdOperation.create.ad.responsiveSearchAd.path1 = path1.substring(0, 15);
+      }
+      if (path2) {
+        adOperation.adGroupAdOperation.create.ad.responsiveSearchAd.path2 = path2.substring(0, 15);
+      }
+
+      mutateOperations.push(adOperation);
+    }
+
+    // 6. Promotion Asset
+    if (promotion && promotion.promotionTarget) {
+      const promotionAssetTempId = assetTempId--;
+      const promotionAsset = {
+        resourceName: `customers/${customerId}/assets/${promotionAssetTempId}`,
+        promotionAsset: {
+          promotionTarget: promotion.promotionTarget.substring(0, 20),
+          redemptionStartDate: promotion.startDate,
+          redemptionEndDate: promotion.endDate,
+        }
+      };
+
+      if (promotion.moneyAmountOff) {
+        promotionAsset.promotionAsset.moneyAmountOff = {
+          amountMicros: String(Math.round(promotion.moneyAmountOff.amount * 1000000)),
+          currencyCode: promotion.moneyAmountOff.currencyCode || 'USD'
+        };
+      } else if (promotion.percentOff) {
+        promotionAsset.promotionAsset.percentOff = promotion.percentOff * 1000000; // micros
+      }
+
+      if (promotion.occasion && promotion.occasion !== 'NONE') {
+        promotionAsset.promotionAsset.occasion = promotion.occasion;
+      }
+      if (promotion.promotionCode) {
+        promotionAsset.promotionAsset.promotionCode = promotion.promotionCode;
+      }
+      if (promotion.ordersOverAmount) {
+        promotionAsset.promotionAsset.ordersOverAmount = {
+          amountMicros: String(Math.round(promotion.ordersOverAmount.amount * 1000000)),
+          currencyCode: promotion.ordersOverAmount.currencyCode || 'USD'
+        };
+      }
+
+      mutateOperations.push({ assetOperation: { create: promotionAsset } });
+
+      // Link to ad group
+      mutateOperations.push({
+        adGroupAssetOperation: {
+          create: {
+            adGroup: `customers/${customerId}/adGroups/-3`,
+            asset: `customers/${customerId}/assets/${promotionAssetTempId}`,
+            fieldType: 'PROMOTION',
+          }
+        }
+      });
+    }
+
+    // 7. Price Asset
+    if (prices && prices.offerings && prices.offerings.length >= 3) {
+      const priceAssetTempId = assetTempId--;
+      const priceOfferings = prices.offerings.map(o => ({
+        header: o.header.substring(0, 25),
+        description: o.description.substring(0, 25),
+        price: {
+          amountMicros: String(Math.round(o.price.amount * 1000000)),
+          currencyCode: o.price.currencyCode || 'USD'
+        },
+        finalUrl: o.finalUrl,
+        unit: o.unit || 'UNSPECIFIED',
+      }));
+
+      const priceAsset = {
+        resourceName: `customers/${customerId}/assets/${priceAssetTempId}`,
+        priceAsset: {
+          type: prices.type,
+          priceOfferings,
+          languageCode: prices.languageCode || 'en',
+        }
+      };
+
+      if (prices.priceQualifier && prices.priceQualifier !== 'NONE') {
+        priceAsset.priceAsset.priceQualifier = prices.priceQualifier;
+      }
+
+      mutateOperations.push({ assetOperation: { create: priceAsset } });
+
+      mutateOperations.push({
+        adGroupAssetOperation: {
+          create: {
+            adGroup: `customers/${customerId}/adGroups/-3`,
+            asset: `customers/${customerId}/assets/${priceAssetTempId}`,
+            fieldType: 'PRICE',
+          }
+        }
+      });
+    }
+
+    // 8. Call Asset
+    if (call && call.phoneNumber) {
+      const callAssetTempId = assetTempId--;
+      mutateOperations.push({
+        assetOperation: {
+          create: {
+            resourceName: `customers/${customerId}/assets/${callAssetTempId}`,
+            callAsset: {
+              countryCode: call.countryCode || 'US',
+              phoneNumber: call.phoneNumber,
+            }
+          }
+        }
+      });
+
+      mutateOperations.push({
+        adGroupAssetOperation: {
+          create: {
+            adGroup: `customers/${customerId}/adGroups/-3`,
+            asset: `customers/${customerId}/assets/${callAssetTempId}`,
+            fieldType: 'CALL',
+          }
+        }
+      });
+    }
+
+    // 9. Callout Assets
+    if (callouts && callouts.length > 0) {
+      callouts.forEach(calloutItem => {
+        // Support both string format and object format with dates
+        const calloutText = typeof calloutItem === 'string' ? calloutItem : calloutItem.text;
+        const startDate = typeof calloutItem === 'object' ? calloutItem.startDate : undefined;
+        const endDate = typeof calloutItem === 'object' ? calloutItem.endDate : undefined;
+        
+        if (calloutText && calloutText.trim()) {
+          const calloutAssetTempId = assetTempId--;
+          const calloutAsset = {
+            resourceName: `customers/${customerId}/assets/${calloutAssetTempId}`,
+            calloutAsset: {
+              calloutText: calloutText.substring(0, 25),
+            }
+          };
+          
+          // Add date scheduling if provided
+          if (startDate) {
+            calloutAsset.calloutAsset.startDate = startDate;
+          }
+          if (endDate) {
+            calloutAsset.calloutAsset.endDate = endDate;
+          }
+          
+          mutateOperations.push({
+            assetOperation: { create: calloutAsset }
+          });
+
+          mutateOperations.push({
+            adGroupAssetOperation: {
+              create: {
+                adGroup: `customers/${customerId}/adGroups/-3`,
+                asset: `customers/${customerId}/assets/${calloutAssetTempId}`,
+                fieldType: 'CALLOUT',
+              }
+            }
+          });
+        }
+      });
+    }
+
+    // 10. Lead Form Asset
+    if (leadForm && leadForm.businessName && leadForm.headline && leadForm.privacyPolicyUrl) {
+      const leadFormAssetTempId = assetTempId--;
+      const leadFormFields = (leadForm.fields || []).map(f => ({ inputType: f }));
+
+      const leadFormAsset = {
+        resourceName: `customers/${customerId}/assets/${leadFormAssetTempId}`,
+        leadFormAsset: {
+          businessName: leadForm.businessName.substring(0, 25),
+          headline: leadForm.headline.substring(0, 30),
+          description: (leadForm.description || '').substring(0, 200),
+          privacyPolicyUrl: leadForm.privacyPolicyUrl,
+          callToActionType: leadForm.callToActionType || 'LEARN_MORE',
+          callToActionDescription: (leadForm.callToActionDescription || '').substring(0, 30),
+          fields: leadFormFields,
+        }
+      };
+
+      if (leadForm.postSubmitHeadline) {
+        leadFormAsset.leadFormAsset.postSubmitHeadline = leadForm.postSubmitHeadline.substring(0, 30);
+      }
+      if (leadForm.postSubmitDescription) {
+        leadFormAsset.leadFormAsset.postSubmitDescription = leadForm.postSubmitDescription.substring(0, 200);
+      }
+
+      mutateOperations.push({ assetOperation: { create: leadFormAsset } });
+
+      mutateOperations.push({
+        adGroupAssetOperation: {
+          create: {
+            adGroup: `customers/${customerId}/adGroups/-3`,
+            asset: `customers/${customerId}/assets/${leadFormAssetTempId}`,
+            fieldType: 'LEAD_FORM',
+          }
+        }
+      });
+    }
+
+    // 11. Mobile App Asset
+    if (mobileApp && mobileApp.appId && mobileApp.linkText) {
+      const appAssetTempId = assetTempId--;
+      mutateOperations.push({
+        assetOperation: {
+          create: {
+            resourceName: `customers/${customerId}/assets/${appAssetTempId}`,
+            mobileAppAsset: {
+              appStore: mobileApp.appStore || 'GOOGLE_APP_STORE',
+              appId: mobileApp.appId,
+              linkText: mobileApp.linkText.substring(0, 25),
+            }
+          }
+        }
+      });
+
+      mutateOperations.push({
+        adGroupAssetOperation: {
+          create: {
+            adGroup: `customers/${customerId}/adGroups/-3`,
+            asset: `customers/${customerId}/assets/${appAssetTempId}`,
+            fieldType: 'MOBILE_APP',
+          }
+        }
+      });
+    }
+
+    console.log(`Adding ${mutateOperations.length} operations to batch job`);
+
+    // Add operations to batch job
     await makeGoogleAdsRequest({
       externalUserId,
       accountId,
       path: `/${batchJobResourceName}:addOperations`,
       method: 'POST',
       body: { mutateOperations },
-      loginCustomerId,
+      loginCustomerId: loginCustomerId || customerId,
     });
 
+    // Run the batch job
     await makeGoogleAdsRequest({
       externalUserId,
       accountId,
       path: `/${batchJobResourceName}:run`,
       method: 'POST',
       body: {},
-      loginCustomerId,
+      loginCustomerId: loginCustomerId || customerId,
     });
 
+    // Poll for completion (with timeout)
+    let batchJobStatus = 'PENDING';
     let results = null;
+    const maxAttempts = 30;
     let attempts = 0;
-    while (attempts < 10) {
-      await new Promise(r => setTimeout(r, 2000));
+
+    while (batchJobStatus !== 'DONE' && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
       attempts++;
-      
+
       try {
         const statusResult = await makeGoogleAdsRequest({
           externalUserId,
           accountId,
           path: `/${batchJobResourceName}`,
           method: 'GET',
-          loginCustomerId,
+          loginCustomerId: loginCustomerId || customerId,
         });
-        
-        if (statusResult.status === 'DONE') {
-          results = await makeGoogleAdsRequest({
-            externalUserId,
-            accountId,
-            path: `/${batchJobResourceName}:listResults`,
-            method: 'GET',
-            loginCustomerId,
-          });
-          break;
-        }
+
+        batchJobStatus = statusResult.status || 'PENDING';
       } catch (e) {
-        console.log('Polling batch job status...', e.message);
+        console.log('Polling status check failed (expected with some proxies):', e.message);
+        break;
       }
+    }
+
+    // Try to get results
+    try {
+      const listResults = await makeGoogleAdsRequest({
+        externalUserId,
+        accountId,
+        path: `/${batchJobResourceName}:listResults`,
+        method: 'GET',
+        loginCustomerId: loginCustomerId || customerId,
+      });
+      results = listResults.results;
+    } catch (e) {
+      console.log('Could not fetch batch job results:', e.message);
     }
 
     res.json({
       success: true,
       batchJob: batchJobResourceName,
+      operationsCount: mutateOperations.length,
+      status: batchJobStatus,
       results,
     });
+
   } catch (error) {
     console.error('Error creating complete campaign:', error);
     res.status(500).json({ error: error.message });

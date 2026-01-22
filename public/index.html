@@ -282,6 +282,30 @@
       font-size: 48px;
       margin-bottom: 16px;
     }
+    
+    /* Form Section Styles */
+    .form-section { margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #e0e0e0; }
+    .form-section:last-child { border-bottom: none; }
+    .section-title { font-size: 14px; font-weight: 600; color: #333; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+    .section-title .badge { font-size: 10px; padding: 2px 6px; border-radius: 3px; }
+    .section-title .badge.required { background: #dc3545; color: white; }
+    .section-title .badge.optional { background: #6c757d; color: white; }
+    .char-counter { font-size: 11px; color: #666; text-align: right; margin-top: 2px; }
+    .char-counter.warning { color: #e65100; }
+    .char-counter.error { color: #dc3545; }
+    .dynamic-fields { display: flex; flex-direction: column; gap: 8px; }
+    .dynamic-field { display: flex; gap: 8px; align-items: center; }
+    .dynamic-field input { flex: 1; }
+    .dynamic-field button { padding: 4px 8px; font-size: 12px; }
+    .add-field-btn { background: #28a745; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-top: 8px; }
+    .add-field-btn:hover { background: #218838; }
+    .add-field-btn:disabled { background: #ccc; cursor: not-allowed; }
+    .remove-field-btn { background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
+    .url-preview { font-size: 12px; color: #666; margin-top: 4px; font-family: monospace; }
+    .path-inputs { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+    .path-inputs span { color: #666; }
+    .path-inputs input { width: 120px; }
+    .divider { text-align: center; padding: 16px 0; color: #666; font-size: 13px; font-weight: 500; border-top: 2px dashed #ccc; margin-top: 16px; }
   </style>
 </head>
 <body>
@@ -397,65 +421,447 @@
     <div id="keywords-list" class="list-container" style="max-height: 400px;"></div>
   </div>
 
+  <!-- Step 5: Create Complete Campaign (Enhanced) -->
   <div class="card">
-    <h2>Step 5: Create Complete Campaign</h2>
-    <div class="grid">
-      <div>
-        <label for="campaign-name">Campaign Name:</label>
-        <input type="text" id="campaign-name" placeholder="My New Campaign" required>
+    <h3>Step 5: Create Complete Campaign</h3>
+    
+    <!-- SECTION: Campaign & Budget -->
+    <div class="form-section">
+      <div class="section-title">
+        CAMPAIGN & BUDGET
+        <span class="badge required">REQUIRED</span>
       </div>
-      <div>
-        <label for="campaign-budget">Daily Budget (USD):</label>
-        <input type="number" id="campaign-budget" step="0.01" min="0.01" value="0.10" required>
-      </div>
-    </div>
-    <div class="grid">
-      <div>
-        <label for="campaign-status">Status:</label>
-        <select id="campaign-status">
-          <option value="PAUSED" selected>PAUSED</option>
-          <option value="ENABLED">ENABLED</option>
-        </select>
-      </div>
-      <div>
-        <label for="adgroup-name">Ad Group Name:</label>
-        <input type="text" id="adgroup-name" placeholder="My Ad Group" required>
-      </div>
-    </div>
-    <div>
-      <label for="campaign-keywords">Keywords (comma-separated):</label>
-      <textarea id="campaign-keywords" placeholder="keyword 1, keyword 2, keyword 3" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;margin-bottom:15px;font-size:14px;min-height:60px;resize:vertical;"></textarea>
-    </div>
-    <div class="grid">
-      <div>
-        <label for="headline-1">Headline 1 (max 30 chars):</label>
-        <input type="text" id="headline-1" maxlength="30" placeholder="Your First Headline" required>
-      </div>
-      <div>
-        <label for="headline-2">Headline 2 (max 30 chars):</label>
-        <input type="text" id="headline-2" maxlength="30" placeholder="Your Second Headline" required>
+      <div class="grid">
+        <div>
+          <label>Campaign Name</label>
+          <input type="text" id="adv-campaign-name" placeholder="My Campaign">
+        </div>
+        <div>
+          <label>Daily Budget (USD)</label>
+          <input type="number" id="adv-budget" value="0.10" step="0.01" min="0.01">
+        </div>
+        <div>
+          <label>Status</label>
+          <select id="adv-status">
+            <option value="PAUSED" selected>PAUSED</option>
+            <option value="ENABLED">ENABLED</option>
+          </select>
+        </div>
       </div>
     </div>
-    <div>
-      <label for="headline-3">Headline 3 (max 30 chars):</label>
-      <input type="text" id="headline-3" maxlength="30" placeholder="Your Third Headline" required>
-    </div>
-    <div class="grid">
-      <div>
-        <label for="description-1">Description 1 (max 90 chars):</label>
-        <input type="text" id="description-1" maxlength="90" placeholder="Your first description goes here" required>
+
+    <!-- SECTION: Ad Group & Keywords -->
+    <div class="form-section">
+      <div class="section-title">
+        AD GROUP & KEYWORDS
+        <span class="badge required">REQUIRED</span>
       </div>
       <div>
-        <label for="description-2">Description 2 (max 90 chars):</label>
-        <input type="text" id="description-2" maxlength="90" placeholder="Your second description goes here" required>
+        <label>Ad Group Name</label>
+        <input type="text" id="adv-adgroup-name" placeholder="My Ad Group">
+      </div>
+      <div style="margin-top: 12px;">
+        <label>Keywords (comma-separated)</label>
+        <textarea id="adv-keywords" rows="2" placeholder="keyword 1, keyword 2, keyword 3"></textarea>
       </div>
     </div>
-    <div>
-      <label for="final-url">Final URL:</label>
-      <input type="url" id="final-url" placeholder="https://example.com" required>
+
+    <!-- SECTION: Headlines & Descriptions -->
+    <div class="form-section">
+      <div class="section-title">
+        HEADLINES & DESCRIPTIONS
+        <span class="badge required">REQUIRED</span>
+      </div>
+      
+      <label>Headlines (min 2, max 15)</label>
+      <div id="headlines-container" class="dynamic-fields">
+        <div class="dynamic-field">
+          <input type="text" class="headline-input" maxlength="30" placeholder="Headline 1" oninput="updateCharCounter(this, 30)">
+          <span class="char-counter">0/30</span>
+        </div>
+        <div class="dynamic-field">
+          <input type="text" class="headline-input" maxlength="30" placeholder="Headline 2" oninput="updateCharCounter(this, 30)">
+          <span class="char-counter">0/30</span>
+        </div>
+        <div class="dynamic-field">
+          <input type="text" class="headline-input" maxlength="30" placeholder="Headline 3" oninput="updateCharCounter(this, 30)">
+          <span class="char-counter">0/30</span>
+        </div>
+      </div>
+      <button type="button" class="add-field-btn" onclick="addHeadline()">+ Add Headline</button>
+      
+      <div style="margin-top: 16px;">
+        <label>Descriptions (min 2, max 4)</label>
+        <div id="descriptions-container" class="dynamic-fields">
+          <div class="dynamic-field">
+            <input type="text" class="description-input" maxlength="90" placeholder="Description 1" oninput="updateCharCounter(this, 90)">
+            <span class="char-counter">0/90</span>
+          </div>
+          <div class="dynamic-field">
+            <input type="text" class="description-input" maxlength="90" placeholder="Description 2" oninput="updateCharCounter(this, 90)">
+            <span class="char-counter">0/90</span>
+          </div>
+        </div>
+        <button type="button" class="add-field-btn" onclick="addDescription()">+ Add Description</button>
+      </div>
     </div>
-    <button onclick="createCompleteCampaign()" id="create-campaign-btn" disabled>Create Complete Campaign</button>
-    <div id="create-campaign-status"></div>
+
+    <!-- SECTION: Final URL -->
+    <div class="form-section">
+      <div class="section-title">
+        FINAL URL
+        <span class="badge required">REQUIRED</span>
+      </div>
+      <div>
+        <label>Final URL</label>
+        <input type="url" id="adv-final-url" placeholder="https://example.com/products/shoes">
+        <p style="font-size:11px; color:#666; margin-top:4px;">Display paths will be auto-extracted from URL (max 2 path segments, 15 chars each)</p>
+      </div>
+      <input type="hidden" id="adv-path1">
+      <input type="hidden" id="adv-path2">
+    </div>
+
+    <!-- DIVIDER: Optional Extensions -->
+    <div class="divider">
+      ────────── OPTIONAL EXTENSIONS ──────────
+    </div>
+
+    <!-- Placeholder for optional sections (will be added by Agent 3) -->
+    <div id="optional-extensions-container">
+      <!-- SECTION: Promotions -->
+      <div class="form-section">
+        <div class="section-title">
+          PROMOTIONS
+          <span class="badge optional">OPTIONAL</span>
+        </div>
+        <div class="grid">
+          <div>
+            <label>Promotion Target</label>
+            <input type="text" id="promo-target" maxlength="20" placeholder="Summer Sale" oninput="updateCharCounter(this, 20)">
+            <div class="char-counter">0/20</div>
+          </div>
+          <div>
+            <label>Discount Type</label>
+            <select id="promo-discount-type" onchange="togglePromoDiscount()">
+              <option value="">-- Select --</option>
+              <option value="money">Money Off</option>
+              <option value="percent">Percent Off</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid" id="promo-money-fields" style="display:none; margin-top:8px;">
+          <div>
+            <label>Amount Off</label>
+            <input type="number" id="promo-money-amount" step="0.01" min="0" placeholder="10.00">
+          </div>
+          <div>
+            <label>Currency</label>
+            <select id="promo-money-currency">
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="GBP">GBP</option>
+              <option value="ILS">ILS</option>
+            </select>
+          </div>
+        </div>
+        <div id="promo-percent-fields" style="display:none; margin-top:8px;">
+          <label>Percent Off (%)</label>
+          <input type="number" id="promo-percent" min="1" max="100" placeholder="20">
+        </div>
+        <div class="grid" style="margin-top:8px;">
+          <div>
+            <label>Occasion</label>
+            <select id="promo-occasion">
+              <option value="">None</option>
+              <option value="NEW_YEARS">New Year's</option>
+              <option value="VALENTINES_DAY">Valentine's Day</option>
+              <option value="EASTER">Easter</option>
+              <option value="MOTHERS_DAY">Mother's Day</option>
+              <option value="FATHERS_DAY">Father's Day</option>
+              <option value="LABOR_DAY">Labor Day</option>
+              <option value="BACK_TO_SCHOOL">Back to School</option>
+              <option value="HALLOWEEN">Halloween</option>
+              <option value="BLACK_FRIDAY">Black Friday</option>
+              <option value="CYBER_MONDAY">Cyber Monday</option>
+              <option value="CHRISTMAS">Christmas</option>
+              <option value="SUMMER_SALE">Summer Sale</option>
+              <option value="WINTER_SALE">Winter Sale</option>
+              <option value="END_OF_SEASON">End of Season</option>
+            </select>
+          </div>
+          <div>
+            <label>Promo Code</label>
+            <input type="text" id="promo-code" placeholder="SAVE20">
+          </div>
+        </div>
+        <div class="grid" style="margin-top:8px;">
+          <div>
+            <label>Orders Over Amount</label>
+            <input type="number" id="promo-min-order" step="0.01" min="0" placeholder="50.00">
+          </div>
+          <div>
+            <label>Start Date</label>
+            <input type="date" id="promo-start-date">
+          </div>
+          <div>
+            <label>End Date</label>
+            <input type="date" id="promo-end-date">
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION: Prices -->
+      <div class="form-section">
+        <div class="section-title">
+          PRICES
+          <span class="badge optional">OPTIONAL</span>
+        </div>
+        <p style="font-size:11px; color:#666; margin-bottom:8px;">Note: Google requires 3-8 price offerings if used</p>
+        <div class="grid">
+          <div>
+            <label>Price Type</label>
+            <select id="price-type">
+              <option value="">-- Select --</option>
+              <option value="BRANDS">Brands</option>
+              <option value="EVENTS">Events</option>
+              <option value="LOCATIONS">Locations</option>
+              <option value="NEIGHBORHOODS">Neighborhoods</option>
+              <option value="PRODUCT_CATEGORIES">Product Categories</option>
+              <option value="PRODUCT_TIERS">Product Tiers</option>
+              <option value="SERVICES">Services</option>
+              <option value="SERVICE_CATEGORIES">Service Categories</option>
+              <option value="SERVICE_TIERS">Service Tiers</option>
+            </select>
+          </div>
+          <div>
+            <label>Qualifier</label>
+            <select id="price-qualifier">
+              <option value="">None</option>
+              <option value="FROM">From</option>
+              <option value="UP_TO">Up To</option>
+              <option value="AVERAGE">Average</option>
+            </select>
+          </div>
+          <div>
+            <label>Language</label>
+            <input type="text" id="price-language" value="en" maxlength="5">
+          </div>
+        </div>
+        <div id="price-offerings-container" style="margin-top:12px;">
+          <div class="price-offering" style="border:1px solid #ddd; padding:12px; border-radius:4px; margin-bottom:8px;">
+            <div class="grid">
+              <div>
+                <label>Header</label>
+                <input type="text" class="price-header" maxlength="25" placeholder="Basic Plan" oninput="updateCharCounter(this, 25)">
+                <div class="char-counter">0/25</div>
+              </div>
+              <div>
+                <label>Description</label>
+                <input type="text" class="price-description" maxlength="25" placeholder="Great for starters" oninput="updateCharCounter(this, 25)">
+                <div class="char-counter">0/25</div>
+              </div>
+            </div>
+            <div class="grid" style="margin-top:8px;">
+              <div>
+                <label>Price</label>
+                <input type="number" class="price-amount" step="0.01" min="0" placeholder="9.99">
+              </div>
+              <div>
+                <label>Currency</label>
+                <select class="price-currency">
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                  <option value="GBP">GBP</option>
+                  <option value="ILS">ILS</option>
+                </select>
+              </div>
+              <div>
+                <label>Unit</label>
+                <select class="price-unit">
+                  <option value="">None</option>
+                  <option value="PER_HOUR">Per Hour</option>
+                  <option value="PER_DAY">Per Day</option>
+                  <option value="PER_WEEK">Per Week</option>
+                  <option value="PER_MONTH">Per Month</option>
+                  <option value="PER_YEAR">Per Year</option>
+                  <option value="PER_NIGHT">Per Night</option>
+                </select>
+              </div>
+            </div>
+            <div style="margin-top:8px;">
+              <label>Offering URL</label>
+              <input type="url" class="price-url" placeholder="https://example.com/pricing">
+            </div>
+          </div>
+        </div>
+        <button type="button" class="add-field-btn" onclick="addPriceOffering()">+ Add Price Offering</button>
+      </div>
+
+      <!-- SECTION: Calls -->
+      <div class="form-section">
+        <div class="section-title">
+          CALLS
+          <span class="badge optional">OPTIONAL</span>
+        </div>
+        <div class="grid">
+          <div>
+            <label>Country Code</label>
+            <input type="text" id="call-country" value="US" maxlength="2" style="width:60px;">
+          </div>
+          <div>
+            <label>Phone Number</label>
+            <input type="tel" id="call-phone" placeholder="+1-555-123-4567">
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION: Callouts -->
+      <div class="form-section">
+        <div class="section-title">
+          CALLOUTS
+          <span class="badge optional">OPTIONAL</span>
+        </div>
+        <div id="callouts-container" class="dynamic-fields">
+          <div class="callout-item" style="border:1px solid #ddd; padding:12px; border-radius:4px; margin-bottom:8px;">
+            <div class="dynamic-field">
+              <input type="text" class="callout-input" maxlength="25" placeholder="Free Shipping" oninput="updateCharCounter(this, 25)">
+              <span class="char-counter">0/25</span>
+            </div>
+            <div class="grid" style="margin-top:8px;">
+              <div>
+                <label style="font-size:12px;">Start Date (optional)</label>
+                <input type="date" class="callout-start-date">
+              </div>
+              <div>
+                <label style="font-size:12px;">End Date (optional)</label>
+                <input type="date" class="callout-end-date">
+              </div>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="add-field-btn" onclick="addCallout()">+ Add Callout</button>
+      </div>
+
+      <!-- SECTION: Lead Form -->
+      <div class="form-section">
+        <div class="section-title">
+          LEAD FORM
+          <span class="badge optional">OPTIONAL</span>
+        </div>
+        <div class="grid">
+          <div>
+            <label>Business Name</label>
+            <input type="text" id="lead-business" maxlength="25" placeholder="Acme Corp" oninput="updateCharCounter(this, 25)">
+            <div class="char-counter">0/25</div>
+          </div>
+          <div>
+            <label>Headline</label>
+            <input type="text" id="lead-headline" maxlength="30" placeholder="Get a Free Quote" oninput="updateCharCounter(this, 30)">
+            <div class="char-counter">0/30</div>
+          </div>
+        </div>
+        <div style="margin-top:8px;">
+          <label>Description</label>
+          <textarea id="lead-description" maxlength="200" rows="2" placeholder="Fill out the form to get started..." oninput="updateCharCounter(this, 200)"></textarea>
+          <div class="char-counter">0/200</div>
+        </div>
+        <div class="grid" style="margin-top:8px;">
+          <div>
+            <label>Privacy Policy URL</label>
+            <input type="url" id="lead-privacy-url" placeholder="https://example.com/privacy">
+          </div>
+          <div>
+            <label>CTA Type</label>
+            <select id="lead-cta-type">
+              <option value="LEARN_MORE">Learn More</option>
+              <option value="GET_QUOTE">Get Quote</option>
+              <option value="APPLY_NOW">Apply Now</option>
+              <option value="SIGN_UP">Sign Up</option>
+              <option value="CONTACT_US">Contact Us</option>
+              <option value="SUBSCRIBE">Subscribe</option>
+              <option value="DOWNLOAD">Download</option>
+              <option value="BOOK_NOW">Book Now</option>
+              <option value="GET_OFFER">Get Offer</option>
+              <option value="REGISTER">Register</option>
+              <option value="GET_INFO">Get Info</option>
+              <option value="REQUEST_DEMO">Request Demo</option>
+              <option value="JOIN_NOW">Join Now</option>
+              <option value="GET_STARTED">Get Started</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:8px;">
+          <label>CTA Description</label>
+          <input type="text" id="lead-cta-desc" maxlength="30" placeholder="Request your free quote today" oninput="updateCharCounter(this, 30)">
+          <div class="char-counter">0/30</div>
+        </div>
+        <div class="grid" style="margin-top:8px;">
+          <div>
+            <label>Post-Submit Headline</label>
+            <input type="text" id="lead-post-headline" maxlength="30" placeholder="Thank you!" oninput="updateCharCounter(this, 30)">
+            <div class="char-counter">0/30</div>
+          </div>
+          <div>
+            <label>Post-Submit Description</label>
+            <input type="text" id="lead-post-desc" maxlength="200" placeholder="We'll be in touch soon" oninput="updateCharCounter(this, 200)">
+            <div class="char-counter">0/200</div>
+          </div>
+        </div>
+        <div style="margin-top:12px;">
+          <label>Fields to Collect:</label>
+          <p style="font-size:11px; color:#666; margin:4px 0 8px;">Contact Information</p>
+          <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:12px;">
+            <label style="font-weight:normal;"><input type="checkbox" class="lead-field" value="FULL_NAME" checked> Name</label>
+            <label style="font-weight:normal;"><input type="checkbox" class="lead-field" value="EMAIL" checked> Email</label>
+            <label style="font-weight:normal;"><input type="checkbox" class="lead-field" value="PHONE_NUMBER" checked> Phone Number</label>
+            <label style="font-weight:normal;"><input type="checkbox" class="lead-field" value="COUNTRY"> Country</label>
+            <label style="font-weight:normal;"><input type="checkbox" class="lead-field" value="CITY"> City</label>
+            <label style="font-weight:normal;"><input type="checkbox" class="lead-field" value="POSTAL_CODE"> Zip/Postal Code</label>
+            <label style="font-weight:normal;"><input type="checkbox" class="lead-field" value="REGION"> State/Province</label>
+          </div>
+          <p style="font-size:11px; color:#666; margin:4px 0 8px;">Work Information</p>
+          <div style="display:flex; flex-wrap:wrap; gap:12px;">
+            <label style="font-weight:normal;"><input type="checkbox" class="lead-field" value="COMPANY_NAME"> Company Name</label>
+            <label style="font-weight:normal;"><input type="checkbox" class="lead-field" value="WORK_EMAIL"> Work Email</label>
+            <label style="font-weight:normal;"><input type="checkbox" class="lead-field" value="WORK_PHONE"> Work Phone</label>
+            <label style="font-weight:normal;"><input type="checkbox" class="lead-field" value="JOB_TITLE"> Job Title</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION: Mobile App -->
+      <div class="form-section">
+        <div class="section-title">
+          MOBILE APP
+          <span class="badge optional">OPTIONAL</span>
+        </div>
+        <div class="grid">
+          <div>
+            <label>App Store</label>
+            <select id="app-store">
+              <option value="">-- Select --</option>
+              <option value="APPLE_APP_STORE">Apple App Store</option>
+              <option value="GOOGLE_APP_STORE">Google Play Store</option>
+            </select>
+          </div>
+          <div>
+            <label>App ID</label>
+            <input type="text" id="app-id" placeholder="com.example.app">
+          </div>
+          <div>
+            <label>Link Text</label>
+            <input type="text" id="app-link-text" maxlength="25" placeholder="Download Now" oninput="updateCharCounter(this, 25)">
+            <div class="char-counter">0/25</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Submit Button -->
+    <div style="margin-top: 24px;">
+      <button id="adv-create-campaign-btn" onclick="createAdvancedCampaign()" disabled>Create Complete Campaign</button>
+      <div id="adv-create-campaign-status" class="status"></div>
+    </div>
   </div>
 
   <div class="card">
@@ -1055,120 +1461,8 @@
       });
       
       document.getElementById('keyword-btn').disabled = false;
-      document.getElementById('create-campaign-btn').disabled = false;
+      document.getElementById('adv-create-campaign-btn').disabled = false;
       loadCampaigns(customerId);
-    }
-
-    async function createCompleteCampaign() {
-      if (!selectedAccountId || !selectedCustomerId) {
-        showStatus('create-campaign-status', 'Please select a customer first', 'error');
-        return;
-      }
-
-      const campaignName = document.getElementById('campaign-name').value.trim();
-      const budgetUsd = parseFloat(document.getElementById('campaign-budget').value);
-      const status = document.getElementById('campaign-status').value;
-      const adGroupName = document.getElementById('adgroup-name').value.trim();
-      const keywordsText = document.getElementById('campaign-keywords').value.trim();
-      const headline1 = document.getElementById('headline-1').value.trim();
-      const headline2 = document.getElementById('headline-2').value.trim();
-      const headline3 = document.getElementById('headline-3').value.trim();
-      const description1 = document.getElementById('description-1').value.trim();
-      const description2 = document.getElementById('description-2').value.trim();
-      const finalUrl = document.getElementById('final-url').value.trim();
-
-      if (!campaignName) {
-        showStatus('create-campaign-status', 'Campaign name is required', 'error');
-        return;
-      }
-      if (!budgetUsd || budgetUsd < 0.01) {
-        showStatus('create-campaign-status', 'Budget must be at least $0.01', 'error');
-        return;
-      }
-      if (!adGroupName) {
-        showStatus('create-campaign-status', 'Ad group name is required', 'error');
-        return;
-      }
-      if (!headline1 || !headline2 || !headline3) {
-        showStatus('create-campaign-status', 'All three headlines are required', 'error');
-        return;
-      }
-      if (headline1.length > 30 || headline2.length > 30 || headline3.length > 30) {
-        showStatus('create-campaign-status', 'Headlines must be 30 characters or less', 'error');
-        return;
-      }
-      if (!description1 || !description2) {
-        showStatus('create-campaign-status', 'Both descriptions are required', 'error');
-        return;
-      }
-      if (description1.length > 90 || description2.length > 90) {
-        showStatus('create-campaign-status', 'Descriptions must be 90 characters or less', 'error');
-        return;
-      }
-      if (!finalUrl) {
-        showStatus('create-campaign-status', 'Final URL is required', 'error');
-        return;
-      }
-
-      const keywords = keywordsText ? keywordsText.split(',').map(k => k.trim()).filter(k => k) : [];
-      const budgetInMicros = Math.round(budgetUsd * 1000000);
-
-      const btn = document.getElementById('create-campaign-btn');
-      const originalText = btn.textContent;
-      btn.disabled = true;
-      btn.textContent = 'Creating...';
-
-      try {
-        showStatus('create-campaign-status', 'Creating campaign...', 'info');
-
-        const response = await fetch(`/api/customers/${selectedCustomerId}/createCompleteCampaign`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            externalUserId: currentUserId,
-            accountId: selectedAccountId,
-            campaignName: campaignName,
-            budgetAmountMicros: budgetInMicros,
-            status: status,
-            adGroupName: adGroupName,
-            keywords: keywords,
-            adHeadlines: [headline1, headline2, headline3],
-            adDescriptions: [description1, description2],
-            finalUrl: finalUrl
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to create campaign');
-        }
-
-        const data = await response.json();
-        showRawResponse(data);
-
-        showStatus('create-campaign-status', 'Campaign created successfully!', 'success');
-
-        document.getElementById('campaign-name').value = '';
-        document.getElementById('campaign-budget').value = '0.10';
-        document.getElementById('campaign-status').value = 'PAUSED';
-        document.getElementById('adgroup-name').value = '';
-        document.getElementById('campaign-keywords').value = '';
-        document.getElementById('headline-1').value = '';
-        document.getElementById('headline-2').value = '';
-        document.getElementById('headline-3').value = '';
-        document.getElementById('description-1').value = '';
-        document.getElementById('description-2').value = '';
-        document.getElementById('final-url').value = '';
-
-        if (selectedCustomerId) {
-          await loadCampaigns(selectedCustomerId);
-        }
-      } catch (error) {
-        showStatus('create-campaign-status', `Error: ${error.message}`, 'error');
-      } finally {
-        btn.disabled = false;
-        btn.textContent = originalText;
-      }
     }
 
     document.addEventListener('DOMContentLoaded', saveUserId);
@@ -1547,6 +1841,176 @@
       if (e.key === 'Escape') closeModal();
     });
 
+    // Character counter
+    function updateCharCounter(input, maxLength) {
+      const counter = input.parentElement.querySelector('.char-counter') || input.nextElementSibling;
+      if (counter && counter.classList.contains('char-counter')) {
+        const len = input.value.length;
+        counter.textContent = `${len}/${maxLength}`;
+        counter.classList.remove('warning', 'error');
+        if (len >= maxLength) {
+          counter.classList.add('error');
+        } else if (len >= maxLength * 0.8) {
+          counter.classList.add('warning');
+        }
+      }
+    }
+
+    // Add headline field
+    function addHeadline() {
+      const container = document.getElementById('headlines-container');
+      const count = container.querySelectorAll('.headline-input').length;
+      if (count >= 15) {
+        alert('Maximum 15 headlines allowed');
+        return;
+      }
+      const div = document.createElement('div');
+      div.className = 'dynamic-field';
+      div.innerHTML = `
+        <input type="text" class="headline-input" maxlength="30" placeholder="Headline ${count + 1}" oninput="updateCharCounter(this, 30)">
+        <span class="char-counter">0/30</span>
+        <button type="button" class="remove-field-btn" onclick="removeField(this, 'headline')">×</button>
+      `;
+      container.appendChild(div);
+    }
+
+    // Add description field
+    function addDescription() {
+      const container = document.getElementById('descriptions-container');
+      const count = container.querySelectorAll('.description-input').length;
+      if (count >= 4) {
+        alert('Maximum 4 descriptions allowed');
+        return;
+      }
+      const div = document.createElement('div');
+      div.className = 'dynamic-field';
+      div.innerHTML = `
+        <input type="text" class="description-input" maxlength="90" placeholder="Description ${count + 1}" oninput="updateCharCounter(this, 90)">
+        <span class="char-counter">0/90</span>
+        <button type="button" class="remove-field-btn" onclick="removeField(this, 'description')">×</button>
+      `;
+      container.appendChild(div);
+    }
+
+    // Remove dynamic field
+    function removeField(btn, type) {
+      const container = type === 'headline' ? document.getElementById('headlines-container') : document.getElementById('descriptions-container');
+      const minCount = 2;
+      const currentCount = container.querySelectorAll(`.${type}-input`).length;
+      if (currentCount <= minCount) {
+        alert(`Minimum ${minCount} ${type}s required`);
+        return;
+      }
+      btn.parentElement.remove();
+    }
+
+    function getDisplayPathsFromUrl(urlString) {
+      try {
+        const url = new URL(urlString);
+        const pathSegments = url.pathname.split('/').filter(s => s.length > 0);
+        return {
+          path1: (pathSegments[0] || '').substring(0, 15),
+          path2: (pathSegments[1] || '').substring(0, 15)
+        };
+      } catch (e) {
+        return { path1: '', path2: '' };
+      }
+    }
+
+    function updateUrlPreview() {
+      const domain = document.getElementById('url-domain')?.textContent || '';
+      const path1 = document.getElementById('adv-path1')?.value || '';
+      const path2 = document.getElementById('adv-path2')?.value || '';
+      const preview = document.getElementById('url-preview');
+      if (!preview) return;
+      let displayUrl = domain;
+      if (path1) displayUrl += '/' + path1;
+      if (path2) displayUrl += '/' + path2;
+      preview.textContent = 'Ad will display: ' + displayUrl;
+    }
+
+    // Create advanced campaign
+    async function createAdvancedCampaign() {
+      const btn = document.getElementById('adv-create-campaign-btn');
+      const statusDiv = document.getElementById('adv-create-campaign-status');
+      
+      const campaignName = document.getElementById('adv-campaign-name').value.trim();
+      const budget = parseFloat(document.getElementById('adv-budget').value);
+      const status = document.getElementById('adv-status').value;
+      const adGroupName = document.getElementById('adv-adgroup-name').value.trim();
+      const keywordsText = document.getElementById('adv-keywords').value.trim();
+      const finalUrl = document.getElementById('adv-final-url').value.trim();
+      const paths = getDisplayPathsFromUrl(finalUrl);
+      const path1 = paths.path1;
+      const path2 = paths.path2;
+      
+      const headlines = Array.from(document.querySelectorAll('.headline-input'))
+        .map(i => i.value.trim())
+        .filter(v => v.length > 0);
+      
+      const descriptions = Array.from(document.querySelectorAll('.description-input'))
+        .map(i => i.value.trim())
+        .filter(v => v.length > 0);
+      
+      if (!campaignName) { showStatus('adv-create-campaign-status', 'Campaign name is required', 'error'); return; }
+      if (!adGroupName) { showStatus('adv-create-campaign-status', 'Ad group name is required', 'error'); return; }
+      if (!keywordsText) { showStatus('adv-create-campaign-status', 'At least one keyword is required', 'error'); return; }
+      if (headlines.length < 2) { showStatus('adv-create-campaign-status', 'At least 2 headlines are required', 'error'); return; }
+      if (descriptions.length < 2) { showStatus('adv-create-campaign-status', 'At least 2 descriptions are required', 'error'); return; }
+      if (!finalUrl) { showStatus('adv-create-campaign-status', 'Final URL is required', 'error'); return; }
+      
+      const keywords = keywordsText.split(',').map(k => k.trim()).filter(k => k.length > 0);
+      
+      const requestBody = {
+        externalUserId: currentUserId,
+        accountId: selectedAccountId,
+        campaignName: campaignName + ' ' + Date.now(),
+        budgetAmountMicros: Math.round(budget * 1000000),
+        status,
+        adGroupName,
+        keywords,
+        adHeadlines: headlines,
+        adDescriptions: descriptions,
+        finalUrl,
+        displayPath1: path1,
+        displayPath2: path2,
+      };
+      
+      if (typeof gatherOptionalExtensions === 'function') {
+        const optionalData = gatherOptionalExtensions();
+        Object.assign(requestBody, optionalData);
+      }
+      
+      btn.disabled = true;
+      btn.textContent = 'Creating...';
+      showStatus('adv-create-campaign-status', 'Creating campaign...', 'info');
+      
+      try {
+        const response = await fetch(`/api/customers/${selectedCustomerId}/createCompleteCampaign`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to create campaign');
+        }
+        
+        showStatus('adv-create-campaign-status', `Campaign created successfully! (${data.operationsCount} operations)`, 'success');
+        
+        if (selectedCustomerId) {
+          await loadCampaigns(selectedCustomerId);
+        }
+      } catch (error) {
+        showStatus('adv-create-campaign-status', 'Error: ' + error.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Create Complete Campaign';
+      }
+    }
+
     async function toggleCampaignStatus(campaignId, currentStatus) {
       const newStatus = currentStatus === 'ENABLED' ? 'PAUSED' : 'ENABLED';
       try {
@@ -1707,6 +2171,226 @@
       } catch (error) {
         showStatus('data-status', `Error: ${error.message}`, 'error');
       }
+    }
+
+    function togglePromoDiscount() {
+      const type = document.getElementById('promo-discount-type').value;
+      document.getElementById('promo-money-fields').style.display = type === 'money' ? 'grid' : 'none';
+      document.getElementById('promo-percent-fields').style.display = type === 'percent' ? 'block' : 'none';
+    }
+
+    function addPriceOffering() {
+      const container = document.getElementById('price-offerings-container');
+      const count = container.querySelectorAll('.price-offering').length;
+      if (count >= 8) {
+        alert('Maximum 8 price offerings allowed');
+        return;
+      }
+      const div = document.createElement('div');
+      div.className = 'price-offering';
+      div.style.cssText = 'border:1px solid #ddd; padding:12px; border-radius:4px; margin-bottom:8px; position:relative;';
+      div.innerHTML = `
+        <button type="button" class="remove-field-btn" onclick="this.parentElement.remove()" style="position:absolute; top:8px; right:8px;">×</button>
+        <div class="grid">
+          <div>
+            <label>Header</label>
+            <input type="text" class="price-header" maxlength="25" placeholder="Plan Name" oninput="updateCharCounter(this, 25)">
+            <div class="char-counter">0/25</div>
+          </div>
+          <div>
+            <label>Description</label>
+            <input type="text" class="price-description" maxlength="25" placeholder="Description" oninput="updateCharCounter(this, 25)">
+            <div class="char-counter">0/25</div>
+          </div>
+        </div>
+        <div class="grid" style="margin-top:8px;">
+          <div>
+            <label>Price</label>
+            <input type="number" class="price-amount" step="0.01" min="0" placeholder="19.99">
+          </div>
+          <div>
+            <label>Currency</label>
+            <select class="price-currency">
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="GBP">GBP</option>
+              <option value="ILS">ILS</option>
+            </select>
+          </div>
+          <div>
+            <label>Unit</label>
+            <select class="price-unit">
+              <option value="">None</option>
+              <option value="PER_HOUR">Per Hour</option>
+              <option value="PER_DAY">Per Day</option>
+              <option value="PER_WEEK">Per Week</option>
+              <option value="PER_MONTH">Per Month</option>
+              <option value="PER_YEAR">Per Year</option>
+              <option value="PER_NIGHT">Per Night</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:8px;">
+          <label>Offering URL</label>
+          <input type="url" class="price-url" placeholder="https://example.com/pricing">
+        </div>
+      `;
+      container.appendChild(div);
+    }
+
+    function addCallout() {
+      const container = document.getElementById('callouts-container');
+      const div = document.createElement('div');
+      div.className = 'callout-item';
+      div.style.cssText = 'border:1px solid #ddd; padding:12px; border-radius:4px; margin-bottom:8px; position:relative;';
+      div.innerHTML = `
+        <button type="button" class="remove-field-btn" onclick="this.parentElement.remove()" style="position:absolute; top:8px; right:8px;">×</button>
+        <div class="dynamic-field">
+          <input type="text" class="callout-input" maxlength="25" placeholder="Callout text" oninput="updateCharCounter(this, 25)">
+          <span class="char-counter">0/25</span>
+        </div>
+        <div class="grid" style="margin-top:8px;">
+          <div>
+            <label style="font-size:12px;">Start Date (optional)</label>
+            <input type="date" class="callout-start-date">
+          </div>
+          <div>
+            <label style="font-size:12px;">End Date (optional)</label>
+            <input type="date" class="callout-end-date">
+          </div>
+        </div>
+      `;
+      container.appendChild(div);
+    }
+
+    function gatherOptionalExtensions() {
+      const data = {};
+      
+      const promoTarget = document.getElementById('promo-target').value.trim();
+      if (promoTarget) {
+        data.promotion = {
+          promotionTarget: promoTarget,
+          occasion: document.getElementById('promo-occasion').value || undefined,
+          promotionCode: document.getElementById('promo-code').value.trim() || undefined,
+          startDate: document.getElementById('promo-start-date').value || undefined,
+          endDate: document.getElementById('promo-end-date').value || undefined,
+        };
+        
+        const discountType = document.getElementById('promo-discount-type').value;
+        if (discountType === 'money') {
+          const amount = parseFloat(document.getElementById('promo-money-amount').value);
+          if (amount > 0) {
+            data.promotion.moneyAmountOff = {
+              amount,
+              currencyCode: document.getElementById('promo-money-currency').value
+            };
+          }
+        } else if (discountType === 'percent') {
+          const percent = parseInt(document.getElementById('promo-percent').value);
+          if (percent > 0) {
+            data.promotion.percentOff = percent;
+          }
+        }
+        
+        const minOrder = parseFloat(document.getElementById('promo-min-order').value);
+        if (minOrder > 0) {
+          data.promotion.ordersOverAmount = {
+            amount: minOrder,
+            currencyCode: document.getElementById('promo-money-currency').value
+          };
+        }
+      }
+      
+      const priceType = document.getElementById('price-type').value;
+      if (priceType) {
+        const offerings = [];
+        document.querySelectorAll('.price-offering').forEach(offering => {
+          const header = offering.querySelector('.price-header').value.trim();
+          const description = offering.querySelector('.price-description').value.trim();
+          const amount = parseFloat(offering.querySelector('.price-amount').value);
+          const url = offering.querySelector('.price-url').value.trim();
+          
+          if (header && description && amount > 0 && url) {
+            offerings.push({
+              header,
+              description,
+              price: {
+                amount,
+                currencyCode: offering.querySelector('.price-currency').value
+              },
+              finalUrl: url,
+              unit: offering.querySelector('.price-unit').value || undefined
+            });
+          }
+        });
+        
+        if (offerings.length >= 3) {
+          data.prices = {
+            type: priceType,
+            priceQualifier: document.getElementById('price-qualifier').value || undefined,
+            languageCode: document.getElementById('price-language').value || 'en',
+            offerings
+          };
+        }
+      }
+      
+      const phoneNumber = document.getElementById('call-phone').value.trim();
+      if (phoneNumber) {
+        data.call = {
+          countryCode: document.getElementById('call-country').value || 'US',
+          phoneNumber
+        };
+      }
+      
+      const calloutItems = document.querySelectorAll('.callout-item');
+      const callouts = [];
+      calloutItems.forEach(item => {
+        const text = item.querySelector('.callout-input').value.trim();
+        if (text) {
+          const callout = { text };
+          const startDate = item.querySelector('.callout-start-date')?.value;
+          const endDate = item.querySelector('.callout-end-date')?.value;
+          if (startDate) callout.startDate = startDate;
+          if (endDate) callout.endDate = endDate;
+          callouts.push(callout);
+        }
+      });
+      if (callouts.length > 0) {
+        data.callouts = callouts;
+      }
+      
+      const leadBusiness = document.getElementById('lead-business').value.trim();
+      const leadHeadline = document.getElementById('lead-headline').value.trim();
+      const leadPrivacy = document.getElementById('lead-privacy-url').value.trim();
+      if (leadBusiness && leadHeadline && leadPrivacy) {
+        const fields = Array.from(document.querySelectorAll('.lead-field:checked'))
+          .map(cb => cb.value);
+        
+        data.leadForm = {
+          businessName: leadBusiness,
+          headline: leadHeadline,
+          description: document.getElementById('lead-description').value.trim(),
+          privacyPolicyUrl: leadPrivacy,
+          callToActionType: document.getElementById('lead-cta-type').value,
+          callToActionDescription: document.getElementById('lead-cta-desc').value.trim(),
+          postSubmitHeadline: document.getElementById('lead-post-headline').value.trim() || undefined,
+          postSubmitDescription: document.getElementById('lead-post-desc').value.trim() || undefined,
+          fields
+        };
+      }
+      
+      const appStore = document.getElementById('app-store').value;
+      const appId = document.getElementById('app-id').value.trim();
+      const appLinkText = document.getElementById('app-link-text').value.trim();
+      if (appStore && appId && appLinkText) {
+        data.app = {
+          appStore,
+          appId,
+          linkText: appLinkText
+        };
+      }
+      
+      return data;
     }
   </script>
 </body>
