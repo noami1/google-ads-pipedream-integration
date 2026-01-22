@@ -94,9 +94,201 @@
       max-height: 250px;
       overflow-y: auto;
     }
+    
+    /* Detail Modal Styles */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+    .modal-overlay.visible {
+      opacity: 1;
+    }
+    .modal-container {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.9);
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 700px;
+      width: 90%;
+      max-height: 85vh;
+      overflow: hidden;
+      z-index: 1001;
+      transition: transform 0.25s ease;
+    }
+    .modal-overlay.visible .modal-container {
+      transform: translate(-50%, -50%) scale(1);
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 24px;
+      border-bottom: 1px solid #e9ecef;
+      background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+      color: white;
+    }
+    .modal-header h3 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      max-width: calc(100% - 40px);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .modal-header .modal-type {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      opacity: 0.85;
+      margin-bottom: 4px;
+    }
+    .modal-close {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 20px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+    .modal-close:hover {
+      background: rgba(255,255,255,0.35);
+    }
+    .modal-body {
+      padding: 24px;
+      overflow-y: auto;
+      max-height: calc(85vh - 80px);
+    }
+    .modal-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+      color: #666;
+    }
+    .modal-loading .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #e9ecef;
+      border-top-color: #4285f4;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 16px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .detail-section {
+      margin-bottom: 24px;
+    }
+    .detail-section:last-child {
+      margin-bottom: 0;
+    }
+    .detail-section-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #4285f4;
+      font-weight: 700;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e9ecef;
+    }
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #f1f3f5;
+    }
+    .detail-row:last-child {
+      border-bottom: none;
+    }
+    .detail-label {
+      font-weight: 500;
+      color: #495057;
+      font-size: 13px;
+    }
+    .detail-value {
+      color: #212529;
+      font-size: 13px;
+      text-align: right;
+      max-width: 60%;
+      word-break: break-word;
+    }
+    .detail-value.mono {
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+      font-size: 12px;
+      background: #f8f9fa;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .detail-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .detail-list li {
+      padding: 8px 12px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      font-size: 13px;
+      border-left: 3px solid #4285f4;
+    }
+    .detail-list li:last-child {
+      margin-bottom: 0;
+    }
+    .modal-error {
+      text-align: center;
+      padding: 40px 20px;
+      color: #dc3545;
+    }
+    .modal-error-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
   </style>
 </head>
 <body>
+  <!-- Detail Modal -->
+  <div class="modal-overlay" id="detail-modal" onclick="closeModalOnOverlay(event)">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div>
+          <div class="modal-type" id="modal-type">Campaign</div>
+          <h3 id="modal-title">Loading...</h3>
+        </div>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-body">
+        <div class="modal-loading">
+          <div class="spinner"></div>
+          <span>Loading details...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <h1>Google Ads Integration</h1>
   
   <div class="card">
@@ -389,11 +581,15 @@
         listEl.innerHTML = results.map(r => {
           const c = r.campaign || {};
           const b = r.campaignBudget || {};
+          const escapedName = (c.name || 'Unnamed').replace(/'/g, "\\'").replace(/"/g, '&quot;');
           return `
             <div class="item ${selectedCampaignId === c.id ? 'selected' : ''}" onclick="selectCampaign('${c.id}')">
               <div class="item-header">
                 <strong>${c.name || 'Unnamed'}</strong>
-                ${formatStatus(c.status)}
+                <span>
+                  ${formatStatus(c.status)}
+                  <button onclick="event.stopPropagation(); showCampaignDetails('${c.id}', '${escapedName}')" style="margin-left:8px;padding:4px 10px;font-size:11px;">Details</button>
+                </span>
               </div>
               <div class="item-details">
                 ID: ${c.id || 'N/A'}<br>
@@ -447,11 +643,15 @@
         
         listEl.innerHTML = results.map(r => {
           const ag = r.adGroup || {};
+          const escapedName = (ag.name || 'Unnamed').replace(/'/g, "\\'").replace(/"/g, '&quot;');
           return `
             <div class="item ${selectedAdGroupId === ag.id ? 'selected' : ''}" onclick="selectAdGroup('${ag.id}')">
               <div class="item-header">
                 <strong>${ag.name || 'Unnamed'}</strong>
-                ${formatStatus(ag.status)}
+                <span>
+                  ${formatStatus(ag.status)}
+                  <button onclick="event.stopPropagation(); showAdGroupDetails('${ag.id}', '${escapedName}')" style="margin-left:8px;padding:4px 10px;font-size:11px;">Details</button>
+                </span>
               </div>
               <div class="item-details">
                 ID: ${ag.id || 'N/A'}<br>
@@ -510,7 +710,10 @@
             <div class="item">
               <div class="item-header">
                 <strong>Ad ${ad.id || 'N/A'}</strong>
-                ${formatStatus(aga.status)}
+                <span>
+                  ${formatStatus(aga.status)}
+                  <button onclick="showAdDetails('${ad.id}', '${aga.resourceName || ''}')" style="margin-left:8px;padding:4px 10px;font-size:11px;">Details</button>
+                </span>
               </div>
               <div class="item-details">
                 Type: ${ad.type || 'N/A'}<br>
@@ -623,6 +826,380 @@
     }
 
     document.addEventListener('DOMContentLoaded', saveUserId);
+
+    function openModal(type, title) {
+      const modal = document.getElementById('detail-modal');
+      document.getElementById('modal-type').textContent = type;
+      document.getElementById('modal-title').textContent = title;
+      document.getElementById('modal-body').innerHTML = `
+        <div class="modal-loading">
+          <div class="spinner"></div>
+          <span>Loading details...</span>
+        </div>
+      `;
+      modal.style.display = 'block';
+      requestAnimationFrame(() => modal.classList.add('visible'));
+    }
+
+    function closeModal() {
+      const modal = document.getElementById('detail-modal');
+      modal.classList.remove('visible');
+      setTimeout(() => modal.style.display = 'none', 250);
+    }
+
+    function closeModalOnOverlay(event) {
+      if (event.target.id === 'detail-modal') closeModal();
+    }
+
+    function showModalError(message) {
+      document.getElementById('modal-body').innerHTML = `
+        <div class="modal-error">
+          <div class="modal-error-icon">⚠️</div>
+          <p>${message}</p>
+        </div>
+      `;
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return 'N/A';
+      if (dateStr.length === 8) {
+        return `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
+      }
+      return dateStr;
+    }
+
+    function formatBoolean(val) {
+      if (val === true) return 'Yes';
+      if (val === false) return 'No';
+      return 'N/A';
+    }
+
+    function renderDetailSection(title, rows) {
+      const validRows = rows.filter(r => r.value !== undefined && r.value !== null && r.value !== '');
+      if (validRows.length === 0) return '';
+      return `
+        <div class="detail-section">
+          <div class="detail-section-title">${title}</div>
+          ${validRows.map(r => `
+            <div class="detail-row">
+              <span class="detail-label">${r.label}</span>
+              <span class="detail-value ${r.mono ? 'mono' : ''}">${r.value}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function renderDetailList(title, items) {
+      if (!items || items.length === 0) return '';
+      return `
+        <div class="detail-section">
+          <div class="detail-section-title">${title}</div>
+          <ul class="detail-list">
+            ${items.map(item => `<li>${item}</li>`).join('')}
+          </ul>
+        </div>
+      `;
+    }
+
+    async function executeGAQL(query) {
+      const response = await fetch(
+        `/api/customers/${selectedCustomerId}/googleAds:search?externalUserId=${encodeURIComponent(currentUserId)}&accountId=${encodeURIComponent(selectedAccountId)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query }),
+        }
+      );
+      if (!response.ok) throw new Error((await response.json()).error || 'API request failed');
+      return response.json();
+    }
+
+    async function showCampaignDetails(campaignId, campaignName) {
+      openModal('Campaign', campaignName || `Campaign ${campaignId}`);
+      try {
+        const query = `
+          SELECT 
+            campaign.id,
+            campaign.name,
+            campaign.status,
+            campaign.start_date,
+            campaign.end_date,
+            campaign.advertising_channel_type,
+            campaign.advertising_channel_sub_type,
+            campaign.bidding_strategy_type,
+            campaign.network_settings.target_google_search,
+            campaign.network_settings.target_search_network,
+            campaign.network_settings.target_content_network,
+            campaign.network_settings.target_partner_search_network,
+            campaign.geo_target_type_setting.positive_geo_target_type,
+            campaign.geo_target_type_setting.negative_geo_target_type,
+            campaign.target_spend.target_spend_micros,
+            campaign.url_custom_parameters,
+            campaign_budget.amount_micros,
+            campaign_budget.delivery_method,
+            campaign_budget.period,
+            campaign_budget.type,
+            campaign_budget.explicitly_shared
+          FROM campaign
+          WHERE campaign.id = ${campaignId}
+        `;
+        const data = await executeGAQL(query);
+        const result = (data.results || [])[0];
+        
+        if (!result) {
+          showModalError('Campaign not found');
+          return;
+        }
+        
+        const c = result.campaign || {};
+        const b = result.campaignBudget || {};
+        const ns = c.networkSettings || {};
+        const geo = c.geoTargetTypeSetting || {};
+        const customParams = c.urlCustomParameters || [];
+        
+        let html = renderDetailSection('Basic Information', [
+          { label: 'Campaign ID', value: c.id, mono: true },
+          { label: 'Name', value: c.name },
+          { label: 'Status', value: formatStatus(c.status) },
+          { label: 'Start Date', value: formatDate(c.startDate) },
+          { label: 'End Date', value: formatDate(c.endDate) || 'No end date' },
+        ]);
+        
+        html += renderDetailSection('Channel Settings', [
+          { label: 'Channel Type', value: c.advertisingChannelType },
+          { label: 'Channel Sub-Type', value: c.advertisingChannelSubType },
+          { label: 'Bidding Strategy', value: c.biddingStrategyType },
+        ]);
+        
+        html += renderDetailSection('Budget', [
+          { label: 'Daily Budget', value: formatMicros(b.amountMicros) },
+          { label: 'Delivery Method', value: b.deliveryMethod },
+          { label: 'Budget Period', value: b.period },
+          { label: 'Budget Type', value: b.type },
+          { label: 'Shared Budget', value: formatBoolean(b.explicitlyShared) },
+          { label: 'Target Spend', value: c.targetSpend?.targetSpendMicros ? formatMicros(c.targetSpend.targetSpendMicros) : null },
+        ]);
+        
+        html += renderDetailSection('Network Settings', [
+          { label: 'Google Search', value: formatBoolean(ns.targetGoogleSearch) },
+          { label: 'Search Network', value: formatBoolean(ns.targetSearchNetwork) },
+          { label: 'Content Network', value: formatBoolean(ns.targetContentNetwork) },
+          { label: 'Partner Search Network', value: formatBoolean(ns.targetPartnerSearchNetwork) },
+        ]);
+        
+        html += renderDetailSection('Geo Target Settings', [
+          { label: 'Positive Geo Target Type', value: geo.positiveGeoTargetType },
+          { label: 'Negative Geo Target Type', value: geo.negativeGeoTargetType },
+        ]);
+        
+        if (customParams.length > 0) {
+          const params = customParams.map(p => `{${p.key}} = ${p.value}`);
+          html += renderDetailList('URL Custom Parameters', params);
+        }
+        
+        document.getElementById('modal-body').innerHTML = html || '<p>No additional details available.</p>';
+      } catch (error) {
+        showModalError(error.message);
+      }
+    }
+
+    async function showAdGroupDetails(adGroupId, adGroupName) {
+      openModal('Ad Group', adGroupName || `Ad Group ${adGroupId}`);
+      try {
+        const query = `
+          SELECT 
+            ad_group.id,
+            ad_group.name,
+            ad_group.status,
+            ad_group.type,
+            ad_group.cpc_bid_micros,
+            ad_group.cpm_bid_micros,
+            ad_group.cpv_bid_micros,
+            ad_group.target_cpa_micros,
+            ad_group.target_roas,
+            ad_group.effective_target_cpa_micros,
+            ad_group.effective_target_roas,
+            ad_group.percent_cpc_bid_micros,
+            ad_group.display_custom_bid_dimension,
+            ad_group.final_url_suffix,
+            ad_group.tracking_url_template,
+            campaign.id,
+            campaign.name
+          FROM ad_group
+          WHERE ad_group.id = ${adGroupId}
+        `;
+        const data = await executeGAQL(query);
+        const result = (data.results || [])[0];
+        
+        if (!result) {
+          showModalError('Ad Group not found');
+          return;
+        }
+        
+        const ag = result.adGroup || {};
+        const campaign = result.campaign || {};
+        
+        let html = renderDetailSection('Basic Information', [
+          { label: 'Ad Group ID', value: ag.id, mono: true },
+          { label: 'Name', value: ag.name },
+          { label: 'Status', value: formatStatus(ag.status) },
+          { label: 'Type', value: ag.type },
+          { label: 'Campaign', value: campaign.name },
+          { label: 'Campaign ID', value: campaign.id, mono: true },
+        ]);
+        
+        html += renderDetailSection('Bidding', [
+          { label: 'CPC Bid', value: ag.cpcBidMicros ? formatMicros(ag.cpcBidMicros) : null },
+          { label: 'CPM Bid', value: ag.cpmBidMicros ? formatMicros(ag.cpmBidMicros) : null },
+          { label: 'CPV Bid', value: ag.cpvBidMicros ? formatMicros(ag.cpvBidMicros) : null },
+          { label: 'Target CPA', value: ag.targetCpaMicros ? formatMicros(ag.targetCpaMicros) : null },
+          { label: 'Effective Target CPA', value: ag.effectiveTargetCpaMicros ? formatMicros(ag.effectiveTargetCpaMicros) : null },
+          { label: 'Target ROAS', value: ag.targetRoas ? `${(ag.targetRoas * 100).toFixed(0)}%` : null },
+          { label: 'Effective Target ROAS', value: ag.effectiveTargetRoas ? `${(ag.effectiveTargetRoas * 100).toFixed(0)}%` : null },
+          { label: 'Percent CPC Bid', value: ag.percentCpcBidMicros ? formatMicros(ag.percentCpcBidMicros) : null },
+        ]);
+        
+        html += renderDetailSection('Tracking & Display', [
+          { label: 'Display Custom Bid Dimension', value: ag.displayCustomBidDimension },
+          { label: 'Final URL Suffix', value: ag.finalUrlSuffix },
+          { label: 'Tracking URL Template', value: ag.trackingUrlTemplate },
+        ]);
+        
+        document.getElementById('modal-body').innerHTML = html || '<p>No additional details available.</p>';
+      } catch (error) {
+        showModalError(error.message);
+      }
+    }
+
+    async function showAdDetails(adId, adGroupAdResourceName) {
+      openModal('Ad', `Ad ${adId}`);
+      try {
+        const query = `
+          SELECT 
+            ad_group_ad.ad.id,
+            ad_group_ad.ad.type,
+            ad_group_ad.ad.final_urls,
+            ad_group_ad.ad.final_mobile_urls,
+            ad_group_ad.ad.display_url,
+            ad_group_ad.ad.tracking_url_template,
+            ad_group_ad.ad.url_custom_parameters,
+            ad_group_ad.ad.responsive_search_ad.headlines,
+            ad_group_ad.ad.responsive_search_ad.descriptions,
+            ad_group_ad.ad.responsive_search_ad.path1,
+            ad_group_ad.ad.responsive_search_ad.path2,
+            ad_group_ad.ad.expanded_text_ad.headline_part1,
+            ad_group_ad.ad.expanded_text_ad.headline_part2,
+            ad_group_ad.ad.expanded_text_ad.headline_part3,
+            ad_group_ad.ad.expanded_text_ad.description,
+            ad_group_ad.ad.expanded_text_ad.description2,
+            ad_group_ad.ad.expanded_text_ad.path1,
+            ad_group_ad.ad.expanded_text_ad.path2,
+            ad_group_ad.status,
+            ad_group_ad.policy_summary.approval_status,
+            ad_group_ad.policy_summary.review_status,
+            ad_group.id,
+            ad_group.name,
+            campaign.id,
+            campaign.name
+          FROM ad_group_ad
+          WHERE ad_group_ad.ad.id = ${adId}
+        `;
+        const data = await executeGAQL(query);
+        const result = (data.results || [])[0];
+        
+        if (!result) {
+          showModalError('Ad not found');
+          return;
+        }
+        
+        const aga = result.adGroupAd || {};
+        const ad = aga.ad || {};
+        const rsa = ad.responsiveSearchAd || {};
+        const eta = ad.expandedTextAd || {};
+        const policy = aga.policySummary || {};
+        const adGroup = result.adGroup || {};
+        const campaign = result.campaign || {};
+        const customParams = ad.urlCustomParameters || [];
+        
+        let html = renderDetailSection('Basic Information', [
+          { label: 'Ad ID', value: ad.id, mono: true },
+          { label: 'Ad Type', value: ad.type },
+          { label: 'Status', value: formatStatus(aga.status) },
+          { label: 'Ad Group', value: adGroup.name },
+          { label: 'Ad Group ID', value: adGroup.id, mono: true },
+          { label: 'Campaign', value: campaign.name },
+          { label: 'Campaign ID', value: campaign.id, mono: true },
+        ]);
+        
+        html += renderDetailSection('Policy Status', [
+          { label: 'Approval Status', value: policy.approvalStatus },
+          { label: 'Review Status', value: policy.reviewStatus },
+        ]);
+        
+        const headlines = (rsa.headlines || []).map(h => h.text).filter(Boolean);
+        if (headlines.length > 0) {
+          html += renderDetailList('Headlines (Responsive Search Ad)', headlines);
+        }
+        
+        const descriptions = (rsa.descriptions || []).map(d => d.text).filter(Boolean);
+        if (descriptions.length > 0) {
+          html += renderDetailList('Descriptions (Responsive Search Ad)', descriptions);
+        }
+        
+        if (rsa.path1 || rsa.path2) {
+          html += renderDetailSection('Display Path (Responsive Search Ad)', [
+            { label: 'Path 1', value: rsa.path1 },
+            { label: 'Path 2', value: rsa.path2 },
+          ]);
+        }
+        
+        const etaHeadlines = [eta.headlinePart1, eta.headlinePart2, eta.headlinePart3].filter(Boolean);
+        if (etaHeadlines.length > 0) {
+          html += renderDetailList('Headlines (Expanded Text Ad)', etaHeadlines);
+        }
+        
+        const etaDescriptions = [eta.description, eta.description2].filter(Boolean);
+        if (etaDescriptions.length > 0) {
+          html += renderDetailList('Descriptions (Expanded Text Ad)', etaDescriptions);
+        }
+        
+        if (eta.path1 || eta.path2) {
+          html += renderDetailSection('Display Path (Expanded Text Ad)', [
+            { label: 'Path 1', value: eta.path1 },
+            { label: 'Path 2', value: eta.path2 },
+          ]);
+        }
+        
+        const finalUrls = ad.finalUrls || [];
+        if (finalUrls.length > 0) {
+          html += renderDetailList('Final URLs', finalUrls);
+        }
+        
+        const finalMobileUrls = ad.finalMobileUrls || [];
+        if (finalMobileUrls.length > 0) {
+          html += renderDetailList('Final Mobile URLs', finalMobileUrls);
+        }
+        
+        html += renderDetailSection('Tracking & Display', [
+          { label: 'Display URL', value: ad.displayUrl },
+          { label: 'Tracking URL Template', value: ad.trackingUrlTemplate },
+        ]);
+        
+        if (customParams.length > 0) {
+          const params = customParams.map(p => `{${p.key}} = ${p.value}`);
+          html += renderDetailList('URL Custom Parameters', params);
+        }
+        
+        document.getElementById('modal-body').innerHTML = html || '<p>No additional details available.</p>';
+      } catch (error) {
+        showModalError(error.message);
+      }
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeModal();
+    });
   </script>
 </body>
 </html>

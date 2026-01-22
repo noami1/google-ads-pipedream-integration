@@ -530,7 +530,8 @@ app.post('/api/customers/:customerId/createSimpleCampaign', async (req, res) => 
               targetSearchNetwork: true,
               targetContentNetwork: false,
               targetPartnerSearchNetwork: false,
-            }
+            },
+            containsEuPoliticalAdvertising: 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING',
           }
         }]
       },
