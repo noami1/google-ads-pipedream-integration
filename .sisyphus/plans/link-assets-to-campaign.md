@@ -16,7 +16,7 @@ Change all assets to link at **Campaign level** using `campaignAssets:mutate`
 
 ## TODOs
 
-- [ ] 1. Change Sitelinks to link at Campaign level
+- [x] 1. Change Sitelinks to link at Campaign level
 
   **Location**: server.js around line 900-916
 
@@ -46,7 +46,7 @@ Change all assets to link at **Campaign level** using `campaignAssets:mutate`
 
   **Commit**: NO (group with others)
 
-- [ ] 2. Change Callouts to link at Campaign level
+- [x] 2. Change Callouts to link at Campaign level
 
   **Location**: server.js around line 855-865
 
@@ -76,7 +76,7 @@ Change all assets to link at **Campaign level** using `campaignAssets:mutate`
 
   **Commit**: NO (group with others)
 
-- [ ] 3. Change Promotions to link at Campaign level
+- [x] 3. Change Promotions to link at Campaign level
 
   **Location**: server.js around line 970-980
 
@@ -106,7 +106,7 @@ Change all assets to link at **Campaign level** using `campaignAssets:mutate`
 
   **Commit**: NO (group with others)
 
-- [ ] 4. Change Prices to link at Campaign level
+- [x] 4. Change Prices to link at Campaign level
 
   **Location**: server.js around line 1040-1050
 
@@ -136,7 +136,7 @@ Change all assets to link at **Campaign level** using `campaignAssets:mutate`
 
   **Commit**: NO (group with others)
 
-- [ ] 5. Change Call to link at Campaign level
+- [x] 5. Change Call to link at Campaign level
 
   **Location**: server.js around line 1080-1095
 
@@ -166,7 +166,7 @@ Change all assets to link at **Campaign level** using `campaignAssets:mutate`
 
   **Commit**: NO (group with others)
 
-- [ ] 6. Change Mobile App to link at Campaign level
+- [x] 6. Change Mobile App to link at Campaign level
 
   **Location**: server.js around line 1210-1225
 
