@@ -855,6 +855,7 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
                     adGroup: adGroupResourceName,
                     asset: assetResourceName,
                     fieldType: 'CALLOUT',
+                    status: 'ENABLED',
                   }
                 }]
               },
@@ -907,6 +908,7 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
                   adGroup: adGroupResourceName,
                   asset: assetResourceName,
                   fieldType: 'SITELINK',
+                  status: 'ENABLED',
                 }
               }]
             },
@@ -967,6 +969,7 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
                 adGroup: adGroupResourceName,
                 asset: assetResourceName,
                 fieldType: 'PROMOTION',
+                status: 'ENABLED',
               }
             }]
           },
@@ -1022,6 +1025,7 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
                 adGroup: adGroupResourceName,
                 asset: assetResourceName,
                 fieldType: 'PRICE',
+                status: 'ENABLED',
               }
             }]
           },
