@@ -1687,14 +1687,19 @@
     document.addEventListener('DOMContentLoaded', checkLeadFormToS);
 
     async function checkLeadFormToS() {
+      console.log('checkLeadFormToS called');
       const statusEl = document.getElementById('lead-form-tos-status');
       const textEl = document.getElementById('lead-form-tos-text');
-      const customerId = document.getElementById('customer-id').value.trim();
-      const externalUserId = document.getElementById('user-id').value.trim();
-      const accountId = document.getElementById('account-id').value.trim();
+      
+      // Use global variables set by the UI selection flow
+      const customerId = selectedCustomerId;
+      const externalUserId = currentUserId;
+      const accountId = selectedAccountId;
+      
+      console.log('Credentials:', { customerId, externalUserId, accountId });
       
       if (!customerId || !externalUserId || !accountId) {
-        textEl.innerHTML = '⚠️ Enter account credentials above first';
+        textEl.innerHTML = '⚠️ Select an account and customer above first';
         textEl.style.color = '#666';
         statusEl.style.background = '#f5f5f5';
         return;
