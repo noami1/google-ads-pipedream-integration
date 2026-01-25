@@ -434,7 +434,7 @@
       <div class="grid">
         <div>
           <label>Campaign Name</label>
-          <input type="text" id="adv-campaign-name" placeholder="My Campaign">
+          <input type="text" id="adv-campaign-name" placeholder="My Campaign" value="Test Campaign - Digital Marketing">
         </div>
         <div>
           <label>Daily Budget (USD)</label>
@@ -458,11 +458,19 @@
       </div>
       <div>
         <label>Ad Group Name</label>
-        <input type="text" id="adv-adgroup-name" placeholder="My Ad Group">
+        <input type="text" id="adv-adgroup-name" placeholder="My Ad Group" value="Digital Marketing Services">
       </div>
       <div style="margin-top: 12px;">
         <label>Keywords (comma-separated)</label>
-        <textarea id="adv-keywords" rows="2" placeholder="keyword 1, keyword 2, keyword 3"></textarea>
+        <textarea id="adv-keywords" rows="2" placeholder="keyword 1, keyword 2, keyword 3">digital marketing, online advertising, seo services, social media marketing, ppc management</textarea>
+      </div>
+      <div style="margin-top: 12px;">
+        <label>Max CPC (USD)</label>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 16px;">$</span>
+          <input type="number" id="adv-max-cpc" step="0.01" min="0.01" placeholder="1.00" value="1.00" style="width: 120px;">
+        </div>
+        <p style="font-size:11px; color:#666; margin-top:4px;">Maximum cost-per-click bid. Will be converted to your account's currency.</p>
       </div>
     </div>
 
@@ -476,16 +484,16 @@
       <label>Headlines (min 2, max 15)</label>
       <div id="headlines-container" class="dynamic-fields">
         <div class="dynamic-field">
-          <input type="text" class="headline-input" maxlength="30" placeholder="Headline 1" oninput="updateCharCounter(this, 30)">
-          <span class="char-counter">0/30</span>
+          <input type="text" class="headline-input" maxlength="30" placeholder="Headline 1" value="Expert Digital Marketing" oninput="updateCharCounter(this, 30)">
+          <span class="char-counter">24/30</span>
         </div>
         <div class="dynamic-field">
-          <input type="text" class="headline-input" maxlength="30" placeholder="Headline 2" oninput="updateCharCounter(this, 30)">
-          <span class="char-counter">0/30</span>
+          <input type="text" class="headline-input" maxlength="30" placeholder="Headline 2" value="Grow Your Business Online" oninput="updateCharCounter(this, 30)">
+          <span class="char-counter">25/30</span>
         </div>
         <div class="dynamic-field">
-          <input type="text" class="headline-input" maxlength="30" placeholder="Headline 3" oninput="updateCharCounter(this, 30)">
-          <span class="char-counter">0/30</span>
+          <input type="text" class="headline-input" maxlength="30" placeholder="Headline 3" value="Get Results Fast" oninput="updateCharCounter(this, 30)">
+          <span class="char-counter">16/30</span>
         </div>
       </div>
       <button type="button" class="add-field-btn" onclick="addHeadline()">+ Add Headline</button>
@@ -494,12 +502,12 @@
         <label>Descriptions (min 2, max 4)</label>
         <div id="descriptions-container" class="dynamic-fields">
           <div class="dynamic-field">
-            <input type="text" class="description-input" maxlength="90" placeholder="Description 1" oninput="updateCharCounter(this, 90)">
-            <span class="char-counter">0/90</span>
+            <input type="text" class="description-input" maxlength="90" placeholder="Description 1" value="Professional digital marketing services to help your business reach more customers online." oninput="updateCharCounter(this, 90)">
+            <span class="char-counter">89/90</span>
           </div>
           <div class="dynamic-field">
-            <input type="text" class="description-input" maxlength="90" placeholder="Description 2" oninput="updateCharCounter(this, 90)">
-            <span class="char-counter">0/90</span>
+            <input type="text" class="description-input" maxlength="90" placeholder="Description 2" value="SEO, PPC, and social media marketing. Get a free consultation today. Call now!" oninput="updateCharCounter(this, 90)">
+            <span class="char-counter">79/90</span>
           </div>
         </div>
         <button type="button" class="add-field-btn" onclick="addDescription()">+ Add Description</button>
@@ -514,7 +522,7 @@
       </div>
       <div>
         <label>Final URL</label>
-        <input type="url" id="adv-final-url" placeholder="https://example.com/products/shoes">
+        <input type="url" id="adv-final-url" placeholder="https://example.com/products/shoes" value="https://example.com/digital-marketing/services">
         <p style="font-size:11px; color:#666; margin-top:4px;">Display paths will be auto-extracted from URL (max 2 path segments, 15 chars each)</p>
       </div>
       <input type="hidden" id="adv-path1">
@@ -539,7 +547,7 @@
             <label>Occasion</label>
             <select id="promo-occasion">
               <option value="">None</option>
-              <option value="NEW_YEARS">New Year's</option>
+              <option value="NEW_YEARS" selected>New Year's</option>
               <option value="VALENTINES_DAY">Valentine's Day</option>
               <option value="EASTER">Easter</option>
               <option value="MOTHERS_DAY">Mother's Day</option>
@@ -589,41 +597,41 @@
             <select id="promo-discount-type" onchange="togglePromoDiscount()">
               <option value="">-- Select --</option>
               <option value="money">Monetary Discount</option>
-              <option value="percent">Percent Discount</option>
+              <option value="percent" selected>Percent Discount</option>
             </select>
           </div>
           <div id="promo-money-fields" style="display:none;">
             <label>Amount ($)</label>
             <input type="number" id="promo-money-amount" step="0.01" min="0" placeholder="10.00">
           </div>
-          <div id="promo-percent-fields" style="display:none;">
+          <div id="promo-percent-fields" style="display:block;">
             <label>Percent Off (%)</label>
-            <input type="number" id="promo-percent" min="1" max="100" placeholder="20">
+            <input type="number" id="promo-percent" min="1" max="100" placeholder="20" value="20">
           </div>
         </div>
         <div class="grid" style="margin-top:12px;">
           <div>
             <label>Item (what's being promoted)</label>
-            <input type="text" id="promo-target" maxlength="20" placeholder="Summer Sale" oninput="updateCharCounter(this, 20)">
-            <div class="char-counter">0/20</div>
+            <input type="text" id="promo-target" maxlength="20" placeholder="Summer Sale" value="All Services" oninput="updateCharCounter(this, 20)">
+            <div class="char-counter">12/20</div>
           </div>
         </div>
         <div style="margin-top:12px;">
           <label>Final URL</label>
-          <input type="url" id="promo-final-url" placeholder="https://example.com/promo">
+          <input type="url" id="promo-final-url" placeholder="https://example.com/promo" value="https://example.com/new-year-sale">
         </div>
         <div class="grid" style="margin-top:12px;">
           <div>
             <label>Promotion Details</label>
             <select id="promo-details-type" onchange="togglePromoDetails()">
               <option value="">None</option>
-              <option value="code">On orders with promo code</option>
+              <option value="code" selected>On orders with promo code</option>
               <option value="minimum">On orders over</option>
             </select>
           </div>
-          <div id="promo-code-field" style="display:none;">
+          <div id="promo-code-field" style="display:block;">
             <label>Promo Code</label>
-            <input type="text" id="promo-code" placeholder="SAVE20">
+            <input type="text" id="promo-code" placeholder="SAVE20" value="NEWYEAR20">
           </div>
           <div id="promo-min-order-field" style="display:none;">
             <label>Minimum Order Amount</label>
@@ -664,7 +672,7 @@
               <option value="NEIGHBORHOODS">Neighborhoods</option>
               <option value="PRODUCT_CATEGORIES">Product Categories</option>
               <option value="PRODUCT_TIERS">Product Tiers</option>
-              <option value="SERVICES">Services</option>
+              <option value="SERVICES" selected>Services</option>
               <option value="SERVICE_CATEGORIES">Service Categories</option>
               <option value="SERVICE_TIERS">Service Tiers</option>
             </select>
@@ -673,7 +681,7 @@
             <label>Qualifier</label>
             <select id="price-qualifier">
               <option value="">None</option>
-              <option value="FROM">From</option>
+              <option value="FROM" selected>From</option>
               <option value="UP_TO">Up To</option>
               <option value="AVERAGE">Average</option>
             </select>
@@ -684,28 +692,29 @@
           </div>
         </div>
         <div id="price-offerings-container" style="margin-top:12px;">
+          <!-- Offering 1: Basic -->
           <div class="price-offering" style="border:1px solid #ddd; padding:12px; border-radius:4px; margin-bottom:8px;">
             <div class="grid">
               <div>
                 <label>Header</label>
-                <input type="text" class="price-header" maxlength="25" placeholder="Basic Plan" oninput="updateCharCounter(this, 25)">
-                <div class="char-counter">0/25</div>
+                <input type="text" class="price-header" maxlength="25" placeholder="Basic Plan" value="Basic SEO" oninput="updateCharCounter(this, 25)">
+                <div class="char-counter">9/25</div>
               </div>
               <div>
                 <label>Description</label>
-                <input type="text" class="price-description" maxlength="25" placeholder="Great for starters" oninput="updateCharCounter(this, 25)">
-                <div class="char-counter">0/25</div>
+                <input type="text" class="price-description" maxlength="25" placeholder="Great for starters" value="Small business package" oninput="updateCharCounter(this, 25)">
+                <div class="char-counter">22/25</div>
               </div>
             </div>
             <div class="grid" style="margin-top:8px;">
               <div>
                 <label>Price</label>
-                <input type="number" class="price-amount" step="0.01" min="0" placeholder="9.99">
+                <input type="number" class="price-amount" step="0.01" min="0" placeholder="9.99" value="299">
               </div>
               <div>
                 <label>Currency</label>
                 <select class="price-currency">
-                  <option value="USD">USD</option>
+                  <option value="USD" selected>USD</option>
                   <option value="EUR">EUR</option>
                   <option value="GBP">GBP</option>
                   <option value="ILS">ILS</option>
@@ -718,7 +727,7 @@
                   <option value="PER_HOUR">Per Hour</option>
                   <option value="PER_DAY">Per Day</option>
                   <option value="PER_WEEK">Per Week</option>
-                  <option value="PER_MONTH">Per Month</option>
+                  <option value="PER_MONTH" selected>Per Month</option>
                   <option value="PER_YEAR">Per Year</option>
                   <option value="PER_NIGHT">Per Night</option>
                 </select>
@@ -726,7 +735,99 @@
             </div>
             <div style="margin-top:8px;">
               <label>Offering URL</label>
-              <input type="url" class="price-url" placeholder="https://example.com/pricing">
+              <input type="url" class="price-url" placeholder="https://example.com/pricing" value="https://example.com/pricing/basic">
+            </div>
+          </div>
+          <!-- Offering 2: Professional -->
+          <div class="price-offering" style="border:1px solid #ddd; padding:12px; border-radius:4px; margin-bottom:8px;">
+            <div class="grid">
+              <div>
+                <label>Header</label>
+                <input type="text" class="price-header" maxlength="25" placeholder="Basic Plan" value="Professional" oninput="updateCharCounter(this, 25)">
+                <div class="char-counter">12/25</div>
+              </div>
+              <div>
+                <label>Description</label>
+                <input type="text" class="price-description" maxlength="25" placeholder="Great for starters" value="Growing businesses" oninput="updateCharCounter(this, 25)">
+                <div class="char-counter">18/25</div>
+              </div>
+            </div>
+            <div class="grid" style="margin-top:8px;">
+              <div>
+                <label>Price</label>
+                <input type="number" class="price-amount" step="0.01" min="0" placeholder="9.99" value="599">
+              </div>
+              <div>
+                <label>Currency</label>
+                <select class="price-currency">
+                  <option value="USD" selected>USD</option>
+                  <option value="EUR">EUR</option>
+                  <option value="GBP">GBP</option>
+                  <option value="ILS">ILS</option>
+                </select>
+              </div>
+              <div>
+                <label>Unit</label>
+                <select class="price-unit">
+                  <option value="">None</option>
+                  <option value="PER_HOUR">Per Hour</option>
+                  <option value="PER_DAY">Per Day</option>
+                  <option value="PER_WEEK">Per Week</option>
+                  <option value="PER_MONTH" selected>Per Month</option>
+                  <option value="PER_YEAR">Per Year</option>
+                  <option value="PER_NIGHT">Per Night</option>
+                </select>
+              </div>
+            </div>
+            <div style="margin-top:8px;">
+              <label>Offering URL</label>
+              <input type="url" class="price-url" placeholder="https://example.com/pricing" value="https://example.com/pricing/pro">
+            </div>
+          </div>
+          <!-- Offering 3: Enterprise -->
+          <div class="price-offering" style="border:1px solid #ddd; padding:12px; border-radius:4px; margin-bottom:8px;">
+            <div class="grid">
+              <div>
+                <label>Header</label>
+                <input type="text" class="price-header" maxlength="25" placeholder="Basic Plan" value="Enterprise" oninput="updateCharCounter(this, 25)">
+                <div class="char-counter">10/25</div>
+              </div>
+              <div>
+                <label>Description</label>
+                <input type="text" class="price-description" maxlength="25" placeholder="Great for starters" value="Full-service solution" oninput="updateCharCounter(this, 25)">
+                <div class="char-counter">21/25</div>
+              </div>
+            </div>
+            <div class="grid" style="margin-top:8px;">
+              <div>
+                <label>Price</label>
+                <input type="number" class="price-amount" step="0.01" min="0" placeholder="9.99" value="1299">
+              </div>
+              <div>
+                <label>Currency</label>
+                <select class="price-currency">
+                  <option value="USD" selected>USD</option>
+                  <option value="EUR">EUR</option>
+                  <option value="GBP">GBP</option>
+                  <option value="ILS">ILS</option>
+                </select>
+              </div>
+              <div>
+                <label>Unit</label>
+                <select class="price-unit">
+                  <option value="">None</option>
+                  <option value="PER_HOUR">Per Hour</option>
+                  <option value="PER_DAY">Per Day</option>
+                  <option value="PER_WEEK">Per Week</option>
+                  <option value="PER_MONTH" selected>Per Month</option>
+                  <option value="PER_YEAR">Per Year</option>
+                  <option value="PER_NIGHT">Per Night</option>
+                </select>
+              </div>
+            </div>
+            <div style="margin-top:8px;">
+              <label>Offering URL</label>
+              <input type="url" class="price-url" placeholder="https://example.com/pricing" value="https://example.com/pricing/enterprise">
             </div>
           </div>
         </div>
@@ -746,7 +847,7 @@
           </div>
           <div>
             <label>Phone Number</label>
-            <input type="tel" id="call-phone" placeholder="+1-555-123-4567">
+            <input type="tel" id="call-phone" placeholder="+1-555-123-4567" value="+1-555-123-4567">
           </div>
         </div>
       </div>
@@ -760,8 +861,24 @@
         <div id="callouts-container" class="dynamic-fields">
           <div class="callout-item" style="border:1px solid #ddd; padding:12px; border-radius:4px; margin-bottom:8px;">
             <div class="dynamic-field">
-              <input type="text" class="callout-input" maxlength="25" placeholder="Free Shipping" oninput="updateCharCounter(this, 25)">
-              <span class="char-counter">0/25</span>
+              <input type="text" class="callout-input" maxlength="25" placeholder="Free Shipping" value="Free Consultation" oninput="updateCharCounter(this, 25)">
+              <span class="char-counter">17/25</span>
+            </div>
+            <div class="grid" style="margin-top:8px;">
+              <div>
+                <label style="font-size:12px;">Start Date (optional)</label>
+                <input type="date" class="callout-start-date">
+              </div>
+              <div>
+                <label style="font-size:12px;">End Date (optional)</label>
+                <input type="date" class="callout-end-date">
+              </div>
+            </div>
+          </div>
+          <div class="callout-item" style="border:1px solid #ddd; padding:12px; border-radius:4px; margin-bottom:8px;">
+            <div class="dynamic-field">
+              <input type="text" class="callout-input" maxlength="25" placeholder="Free Shipping" value="24/7 Support" oninput="updateCharCounter(this, 25)">
+              <span class="char-counter">11/25</span>
             </div>
             <div class="grid" style="margin-top:8px;">
               <div>
@@ -787,30 +904,30 @@
         <div class="grid">
           <div>
             <label>Business Name</label>
-            <input type="text" id="lead-business" maxlength="25" placeholder="Acme Corp" oninput="updateCharCounter(this, 25)">
-            <div class="char-counter">0/25</div>
+            <input type="text" id="lead-business" maxlength="25" placeholder="Acme Corp" value="Digital Marketing Pro" oninput="updateCharCounter(this, 25)">
+            <div class="char-counter">20/25</div>
           </div>
           <div>
             <label>Headline</label>
-            <input type="text" id="lead-headline" maxlength="30" placeholder="Get a Free Quote" oninput="updateCharCounter(this, 30)">
-            <div class="char-counter">0/30</div>
+            <input type="text" id="lead-headline" maxlength="30" placeholder="Get a Free Quote" value="Get Your Free Marketing Audit" oninput="updateCharCounter(this, 30)">
+            <div class="char-counter">29/30</div>
           </div>
         </div>
         <div style="margin-top:8px;">
           <label>Description</label>
-          <textarea id="lead-description" maxlength="200" rows="2" placeholder="Fill out the form to get started..." oninput="updateCharCounter(this, 200)"></textarea>
-          <div class="char-counter">0/200</div>
+          <textarea id="lead-description" maxlength="200" rows="2" placeholder="Fill out the form to get started..." oninput="updateCharCounter(this, 200)">Fill out this quick form and one of our experts will contact you within 24 hours to discuss your digital marketing needs.</textarea>
+          <div class="char-counter">120/200</div>
         </div>
         <div class="grid" style="margin-top:8px;">
           <div>
             <label>Privacy Policy URL</label>
-            <input type="url" id="lead-privacy-url" placeholder="https://example.com/privacy">
+            <input type="url" id="lead-privacy-url" placeholder="https://example.com/privacy" value="https://example.com/privacy">
           </div>
           <div>
             <label>CTA Type</label>
             <select id="lead-cta-type">
               <option value="LEARN_MORE">Learn More</option>
-              <option value="GET_QUOTE">Get Quote</option>
+              <option value="GET_QUOTE" selected>Get Quote</option>
               <option value="APPLY_NOW">Apply Now</option>
               <option value="SIGN_UP">Sign Up</option>
               <option value="CONTACT_US">Contact Us</option>
@@ -828,19 +945,19 @@
         </div>
         <div style="margin-top:8px;">
           <label>CTA Description</label>
-          <input type="text" id="lead-cta-desc" maxlength="30" placeholder="Request your free quote today" oninput="updateCharCounter(this, 30)">
-          <div class="char-counter">0/30</div>
+          <input type="text" id="lead-cta-desc" maxlength="30" placeholder="Request your free quote today" value="Get your free audit now" oninput="updateCharCounter(this, 30)">
+          <div class="char-counter">23/30</div>
         </div>
         <div class="grid" style="margin-top:8px;">
           <div>
             <label>Post-Submit Headline</label>
-            <input type="text" id="lead-post-headline" maxlength="30" placeholder="Thank you!" oninput="updateCharCounter(this, 30)">
-            <div class="char-counter">0/30</div>
+            <input type="text" id="lead-post-headline" maxlength="30" placeholder="Thank you!" value="Thank You!" oninput="updateCharCounter(this, 30)">
+            <div class="char-counter">10/30</div>
           </div>
           <div>
             <label>Post-Submit Description</label>
-            <input type="text" id="lead-post-desc" maxlength="200" placeholder="We'll be in touch soon" oninput="updateCharCounter(this, 200)">
-            <div class="char-counter">0/200</div>
+            <input type="text" id="lead-post-desc" maxlength="200" placeholder="We'll be in touch soon" value="Our team will contact you within 24 hours" oninput="updateCharCounter(this, 200)">
+            <div class="char-counter">41/200</div>
           </div>
         </div>
         <div style="margin-top:12px;">
@@ -877,17 +994,17 @@
             <select id="app-store">
               <option value="">-- Select --</option>
               <option value="APPLE_APP_STORE">Apple App Store</option>
-              <option value="GOOGLE_APP_STORE">Google Play Store</option>
+              <option value="GOOGLE_APP_STORE" selected>Google Play Store</option>
             </select>
           </div>
           <div>
             <label>App ID</label>
-            <input type="text" id="app-id" placeholder="com.example.app">
+            <input type="text" id="app-id" placeholder="com.example.app" value="com.example.marketing">
           </div>
           <div>
             <label>Link Text</label>
-            <input type="text" id="app-link-text" maxlength="25" placeholder="Download Now" oninput="updateCharCounter(this, 25)">
-            <div class="char-counter">0/25</div>
+            <input type="text" id="app-link-text" maxlength="25" placeholder="Download Now" value="Get the App" oninput="updateCharCounter(this, 25)">
+            <div class="char-counter">11/25</div>
           </div>
         </div>
       </div>
@@ -1975,6 +2092,7 @@
       const status = document.getElementById('adv-status').value;
       const adGroupName = document.getElementById('adv-adgroup-name').value.trim();
       const keywordsText = document.getElementById('adv-keywords').value.trim();
+      const maxCpcUsd = parseFloat(document.getElementById('adv-max-cpc').value) || 1.00;
       const finalUrl = document.getElementById('adv-final-url').value.trim();
       const paths = getDisplayPathsFromUrl(finalUrl);
       const path1 = paths.path1;
@@ -2005,6 +2123,7 @@
         status,
         adGroupName,
         keywords,
+        maxCpcUsd,
         adHeadlines: headlines,
         adDescriptions: descriptions,
         finalUrl,

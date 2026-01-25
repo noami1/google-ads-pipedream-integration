@@ -69,6 +69,45 @@ async function getPipedreamAccessToken() {
   return pdAccessToken;
 }
 
+async function getCustomerCurrency({ externalUserId, accountId, customerId, loginCustomerId = null }) {
+  const result = await makeGoogleAdsRequest({
+    externalUserId,
+    accountId,
+    path: `/customers/${customerId}/googleAds:search`,
+    method: 'POST',
+    body: { query: 'SELECT customer.currency_code FROM customer LIMIT 1' },
+    loginCustomerId
+  });
+
+  if (result.results && result.results.length > 0) {
+    return result.results[0].customer.currencyCode;
+  }
+  throw new Error('Could not retrieve customer currency code');
+}
+
+async function convertUsdToTargetCurrency(amountUsd, targetCurrency) {
+  if (targetCurrency === 'USD') {
+    return amountUsd;
+  }
+
+  const response = await fetch(
+    `https://api.frankfurter.dev/v1/latest?base=USD&symbols=${targetCurrency}`
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch exchange rate: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const rate = data.rates[targetCurrency];
+  
+  if (!rate) {
+    throw new Error(`Exchange rate not found for currency: ${targetCurrency}`);
+  }
+
+  return amountUsd * rate;
+}
+
 // Generate a connect link URL for OAuth flow
 app.post('/api/connect-token', async (req, res) => {
   try {
@@ -580,6 +619,8 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
       finalUrl,
       displayPath1,
       displayPath2,
+      // Max CPC (in USD)
+      maxCpcUsd = 1.00,
       // Optional extensions
       promotion,
       prices,
@@ -599,6 +640,10 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
     const normalizedFinalUrl = urlParts.finalUrl;
     const path1 = displayPath1 !== undefined ? displayPath1 : urlParts.path1;
     const path2 = displayPath2 !== undefined ? displayPath2 : urlParts.path2;
+
+    const customerCurrency = await getCustomerCurrency({ externalUserId, accountId, customerId, loginCustomerId });
+    const maxCpcInCustomerCurrency = await convertUsdToTargetCurrency(maxCpcUsd, customerCurrency);
+    const cpcBidMicros = String(Math.round(maxCpcInCustomerCurrency * 1000000));
 
     // Create batch job
     const batchJobResult = await makeGoogleAdsRequest({
@@ -664,7 +709,7 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
             campaign: `customers/${customerId}/campaigns/-2`,
             type: 'SEARCH_STANDARD',
             status: 'ENABLED',
-            cpcBidMicros: '1000000',
+            cpcBidMicros,
           }
         }
       });
@@ -749,7 +794,7 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
           currencyCode: promotion.moneyAmountOff.currencyCode || 'USD'
         };
       } else if (promotion.percentOff) {
-        promotionAsset.promotionAsset.percentOff = promotion.percentOff * 1000000;
+        promotionAsset.promotionAsset.percentOff = String(promotion.percentOff * 1000000);
       }
 
       if (promotion.occasion && promotion.occasion !== 'NONE' && promotion.occasion !== '') {
