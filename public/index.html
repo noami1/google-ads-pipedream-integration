@@ -956,6 +956,36 @@
         <button type="button" class="add-field-btn" onclick="addSitelink()">+ Add Sitelink</button>
       </div>
 
+      <!-- SECTION: Account-Level Assets Status -->
+      <div class="form-section">
+        <div class="section-title">
+          ACCOUNT-LEVEL ASSETS
+          <span class="badge optional">INFO</span>
+        </div>
+        <p style="font-size:11px; color:#666; margin-bottom:12px;">These assets must be created in Google Ads UI. Check if they exist:</p>
+        
+        <!-- Business Name Status -->
+        <div id="business-name-status" style="margin-bottom:8px; padding:8px 12px; border-radius:4px; font-size:13px; display:flex; align-items:center; justify-content:space-between; background:#f5f5f5;">
+          <span id="business-name-text" style="color:#666;">Business Name - Click to check</span>
+          <button type="button" onclick="checkBusinessName()" style="padding:4px 10px; font-size:12px; cursor:pointer;">Check</button>
+        </div>
+        
+        <!-- Logo Status -->
+        <div id="logo-status" style="margin-bottom:8px; padding:8px 12px; border-radius:4px; font-size:13px; display:flex; align-items:center; justify-content:space-between; background:#f5f5f5;">
+          <span id="logo-text" style="color:#666;">Logo - Click to check</span>
+          <button type="button" onclick="checkLogo()" style="padding:4px 10px; font-size:12px; cursor:pointer;">Check</button>
+        </div>
+        
+        <!-- Location Asset Status -->
+        <div id="location-asset-status" style="margin-bottom:8px; padding:8px 12px; border-radius:4px; font-size:13px; display:flex; align-items:center; justify-content:space-between; background:#f5f5f5;">
+          <span id="location-asset-text" style="color:#666;">Location Asset - Click to check</span>
+          <button type="button" onclick="checkLocationAsset()" style="padding:4px 10px; font-size:12px; cursor:pointer;">Check</button>
+        </div>
+        
+        <!-- Check All Button -->
+        <button type="button" onclick="checkAllAccountAssets()" style="margin-top:8px; padding:6px 12px; font-size:12px; cursor:pointer; background:#6c757d; color:white; border:none; border-radius:4px;">Check All Account Assets</button>
+      </div>
+
       <!-- SECTION: Lead Form -->
       <div class="form-section">
         <div class="section-title">
@@ -1741,6 +1771,171 @@
       }
     }
     window.checkLeadFormToS = checkLeadFormToS;
+
+    async function checkBusinessName() {
+      const statusEl = document.getElementById('business-name-status');
+      const textEl = document.getElementById('business-name-text');
+      
+      const customerId = selectedCustomerId;
+      const externalUserId = currentUserId;
+      const accountId = selectedAccountId;
+      
+      if (!customerId || !externalUserId || !accountId) {
+        textEl.innerHTML = '⚠️ Select an account and customer above first';
+        textEl.style.color = '#666';
+        statusEl.style.background = '#f5f5f5';
+        return;
+      }
+      
+      textEl.innerHTML = 'Checking...';
+      textEl.style.color = '#666';
+      
+      try {
+        const response = await fetch(
+          `/api/customers/${customerId}/googleAds:search?externalUserId=${encodeURIComponent(externalUserId)}&accountId=${encodeURIComponent(accountId)}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              query: `SELECT customer_asset.asset, customer_asset.field_type, customer_asset.status FROM customer_asset WHERE customer_asset.field_type = 'BUSINESS_NAME'`
+            })
+          }
+        );
+        
+        if (!response.ok) throw new Error('Failed to check');
+        
+        const data = await response.json();
+        const hasAsset = data.results && data.results.length > 0;
+        
+        if (hasAsset) {
+          textEl.innerHTML = '✅ <strong>Business Name</strong> - Asset exists';
+          textEl.style.color = '#155724';
+          statusEl.style.background = '#d4edda';
+        } else {
+          textEl.innerHTML = '❌ <strong>Business Name</strong> - Missing. <a href="https://ads.google.com" target="_blank" style="color:#721c24;">Add in Google Ads UI</a>';
+          textEl.style.color = '#721c24';
+          statusEl.style.background = '#f8d7da';
+        }
+      } catch (err) {
+        textEl.innerHTML = '⚠️ Could not check Business Name status';
+        textEl.style.color = '#666';
+        statusEl.style.background = '#f5f5f5';
+      }
+    }
+    window.checkBusinessName = checkBusinessName;
+
+    async function checkLogo() {
+      const statusEl = document.getElementById('logo-status');
+      const textEl = document.getElementById('logo-text');
+      
+      const customerId = selectedCustomerId;
+      const externalUserId = currentUserId;
+      const accountId = selectedAccountId;
+      
+      if (!customerId || !externalUserId || !accountId) {
+        textEl.innerHTML = '⚠️ Select an account and customer above first';
+        textEl.style.color = '#666';
+        statusEl.style.background = '#f5f5f5';
+        return;
+      }
+      
+      textEl.innerHTML = 'Checking...';
+      textEl.style.color = '#666';
+      
+      try {
+        const response = await fetch(
+          `/api/customers/${customerId}/googleAds:search?externalUserId=${encodeURIComponent(externalUserId)}&accountId=${encodeURIComponent(accountId)}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              query: `SELECT customer_asset.asset, customer_asset.field_type, customer_asset.status FROM customer_asset WHERE customer_asset.field_type IN ('LOGO', 'BUSINESS_LOGO', 'LANDSCAPE_LOGO')`
+            })
+          }
+        );
+        
+        if (!response.ok) throw new Error('Failed to check');
+        
+        const data = await response.json();
+        const hasAsset = data.results && data.results.length > 0;
+        
+        if (hasAsset) {
+          textEl.innerHTML = '✅ <strong>Logo</strong> - Asset exists';
+          textEl.style.color = '#155724';
+          statusEl.style.background = '#d4edda';
+        } else {
+          textEl.innerHTML = '❌ <strong>Logo</strong> - Missing. <a href="https://ads.google.com" target="_blank" style="color:#721c24;">Add in Google Ads UI</a>';
+          textEl.style.color = '#721c24';
+          statusEl.style.background = '#f8d7da';
+        }
+      } catch (err) {
+        textEl.innerHTML = '⚠️ Could not check Logo status';
+        textEl.style.color = '#666';
+        statusEl.style.background = '#f5f5f5';
+      }
+    }
+    window.checkLogo = checkLogo;
+
+    async function checkLocationAsset() {
+      const statusEl = document.getElementById('location-asset-status');
+      const textEl = document.getElementById('location-asset-text');
+      
+      const customerId = selectedCustomerId;
+      const externalUserId = currentUserId;
+      const accountId = selectedAccountId;
+      
+      if (!customerId || !externalUserId || !accountId) {
+        textEl.innerHTML = '⚠️ Select an account and customer above first';
+        textEl.style.color = '#666';
+        statusEl.style.background = '#f5f5f5';
+        return;
+      }
+      
+      textEl.innerHTML = 'Checking...';
+      textEl.style.color = '#666';
+      
+      try {
+        const response = await fetch(
+          `/api/customers/${customerId}/googleAds:search?externalUserId=${encodeURIComponent(externalUserId)}&accountId=${encodeURIComponent(accountId)}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              query: `SELECT customer_asset.asset, customer_asset.field_type, customer_asset.status FROM customer_asset WHERE customer_asset.field_type = 'LOCATION'`
+            })
+          }
+        );
+        
+        if (!response.ok) throw new Error('Failed to check');
+        
+        const data = await response.json();
+        const hasAsset = data.results && data.results.length > 0;
+        
+        if (hasAsset) {
+          textEl.innerHTML = '✅ <strong>Location Asset</strong> - Asset exists';
+          textEl.style.color = '#155724';
+          statusEl.style.background = '#d4edda';
+        } else {
+          textEl.innerHTML = '❌ <strong>Location Asset</strong> - Missing. <a href="https://ads.google.com" target="_blank" style="color:#721c24;">Add in Google Ads UI</a>';
+          textEl.style.color = '#721c24';
+          statusEl.style.background = '#f8d7da';
+        }
+      } catch (err) {
+        textEl.innerHTML = '⚠️ Could not check Location Asset status';
+        textEl.style.color = '#666';
+        statusEl.style.background = '#f5f5f5';
+      }
+    }
+    window.checkLocationAsset = checkLocationAsset;
+
+    async function checkAllAccountAssets() {
+      await Promise.all([
+        checkBusinessName(),
+        checkLogo(),
+        checkLocationAsset()
+      ]);
+    }
+    window.checkAllAccountAssets = checkAllAccountAssets;
 
     function openModal(type, title) {
       const modal = document.getElementById('detail-modal');
