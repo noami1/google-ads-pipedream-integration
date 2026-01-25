@@ -962,8 +962,9 @@
           LEAD FORM
           <span class="badge optional">OPTIONAL</span>
         </div>
-        <div id="lead-form-tos-status" style="margin-bottom:12px; padding:8px 12px; border-radius:4px; font-size:13px;">
-          <span style="color:#666;">Checking Terms of Service status...</span>
+        <div id="lead-form-tos-status" style="margin-bottom:12px; padding:8px 12px; border-radius:4px; font-size:13px; display:flex; align-items:center; justify-content:space-between;">
+          <span id="lead-form-tos-text" style="color:#666;">Click to check Terms of Service status</span>
+          <button type="button" onclick="checkLeadFormToS()" style="padding:4px 10px; font-size:12px; cursor:pointer;">Check Status</button>
         </div>
         <div class="grid">
           <div>
@@ -1687,15 +1688,20 @@
 
     async function checkLeadFormToS() {
       const statusEl = document.getElementById('lead-form-tos-status');
+      const textEl = document.getElementById('lead-form-tos-text');
       const customerId = document.getElementById('customer-id').value.trim();
       const externalUserId = document.getElementById('user-id').value.trim();
       const accountId = document.getElementById('account-id').value.trim();
       
       if (!customerId || !externalUserId || !accountId) {
-        statusEl.innerHTML = '<span style="color:#666;">⚠️ Enter account credentials to check ToS status</span>';
+        textEl.innerHTML = '⚠️ Enter account credentials above first';
+        textEl.style.color = '#666';
         statusEl.style.background = '#f5f5f5';
         return;
       }
+      
+      textEl.innerHTML = 'Checking...';
+      textEl.style.color = '#666';
       
       try {
         const response = await fetch(
@@ -1715,16 +1721,17 @@
         const accepted = data.results?.[0]?.customer?.customerAgreementSetting?.acceptedLeadFormTerms;
         
         if (accepted) {
-          statusEl.innerHTML = '✅ <strong>Terms of Service accepted</strong> - Lead Forms can be created via API';
+          textEl.innerHTML = '✅ <strong>Terms of Service accepted</strong> - Lead Forms can be created via API';
+          textEl.style.color = '#155724';
           statusEl.style.background = '#d4edda';
-          statusEl.style.color = '#155724';
         } else {
-          statusEl.innerHTML = '❌ <strong>Terms of Service NOT accepted</strong> - <a href="https://ads.google.com" target="_blank" style="color:#721c24;">Accept in Google Ads UI</a> to enable Lead Forms';
+          textEl.innerHTML = '❌ <strong>Terms of Service NOT accepted</strong> - <a href="https://ads.google.com" target="_blank" style="color:#721c24;">Accept in Google Ads UI</a>';
+          textEl.style.color = '#721c24';
           statusEl.style.background = '#f8d7da';
-          statusEl.style.color = '#721c24';
         }
       } catch (err) {
-        statusEl.innerHTML = '<span style="color:#666;">⚠️ Could not check ToS status</span>';
+        textEl.innerHTML = '⚠️ Could not check ToS status';
+        textEl.style.color = '#666';
         statusEl.style.background = '#f5f5f5';
       }
     }
