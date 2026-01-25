@@ -1,8 +1,6 @@
 {
-  "active_plan": "/Users/noam/Desktop/pipedream-tests/google-adds-integration-example-code/.sisyphus/plans/sequential-api-calls.md",
-  "started_at": "2026-01-25T11:03:04.053Z",
-  "session_ids": [
-    "ses_40bd8933bffeLkHjUK1yWDKrwg"
-  ],
-  "plan_name": "sequential-api-calls"
+  "active_plan": "/Users/noam/Desktop/pipedream-tests/google-adds-integration-example-code/.sisyphus/plans/fix-asset-defaults.md",
+  "started_at": "2026-01-25T12:34:40.480Z",
+  "session_ids": ["ses_40bd8933bffeLkHjUK1yWDKrwg"],
+  "plan_name": "fix-asset-defaults"
 }
