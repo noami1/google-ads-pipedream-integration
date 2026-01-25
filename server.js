@@ -1051,47 +1051,55 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
     if (adGroupResourceName && call && call.phoneNumber) {
       console.log('Creating call asset...');
       
-      const callAssetResult = await makeGoogleAdsRequest({
-        customerId,
-        endpoint: 'assets:mutate',
-        body: {
-          operations: [{
-            create: {
-              callAsset: {
-                countryCode: call.countryCode || 'US',
-                phoneNumber: call.phoneNumber,
-              }
-            }
-          }]
-        },
-        externalUserId,
-        accountId,
-        loginCustomerId: loginCustomerId || customerId,
-      });
-
-      const callAssetResourceName = callAssetResult?.results?.[0]?.resourceName;
+      // Clean phone number - remove dashes, spaces, keep only digits and leading +
+      const cleanPhoneNumber = call.phoneNumber.replace(/[^\d+]/g, '');
+      console.log('Phone number cleaned:', cleanPhoneNumber);
       
-      if (callAssetResourceName) {
-        console.log('Call asset created:', callAssetResourceName);
-        
-        await makeGoogleAdsRequest({
-          customerId,
-          endpoint: 'adGroupAssets:mutate',
+      try {
+        const callAssetResult = await makeGoogleAdsRequest({
+          externalUserId,
+          accountId,
+          path: `/customers/${customerId}/assets:mutate`,
+          method: 'POST',
           body: {
             operations: [{
               create: {
-                adGroup: adGroupResourceName,
-                asset: callAssetResourceName,
-                fieldType: 'CALL',
-                status: 'ENABLED',
+                callAsset: {
+                  countryCode: call.countryCode || 'IL',
+                  phoneNumber: cleanPhoneNumber || '0522598777',
+                }
               }
             }]
           },
-          externalUserId,
-          accountId,
           loginCustomerId: loginCustomerId || customerId,
         });
-        console.log('Call asset linked to ad group');
+
+        const callAssetResourceName = callAssetResult?.results?.[0]?.resourceName;
+        
+        if (callAssetResourceName) {
+          console.log('Call asset created:', callAssetResourceName);
+          
+          await makeGoogleAdsRequest({
+            externalUserId,
+            accountId,
+            path: `/customers/${customerId}/adGroupAssets:mutate`,
+            method: 'POST',
+            body: {
+              operations: [{
+                create: {
+                  adGroup: adGroupResourceName,
+                  asset: callAssetResourceName,
+                  fieldType: 'CALL',
+                  status: 'ENABLED',
+                }
+              }]
+            },
+            loginCustomerId: loginCustomerId || customerId,
+          });
+          console.log('Call asset linked to ad group');
+        }
+      } catch (callError) {
+        console.error('Failed to create call asset:', callError.message);
       }
     }
 
@@ -1099,115 +1107,123 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
     if (campaignResourceName && leadForm && leadForm.businessName) {
       console.log('Creating lead form asset...');
       
-      const leadFormFields = (leadForm.fields || ['FULL_NAME', 'EMAIL', 'PHONE_NUMBER']).map(field => ({
-        inputType: field
-      }));
-      
-      const leadFormAssetPayload = {
-        leadFormAsset: {
-          businessName: leadForm.businessName,
-          headline: leadForm.headline || 'Contact Us',
-          description: leadForm.description || 'Fill out this form and we will contact you.',
-          privacyPolicyUrl: leadForm.privacyPolicyUrl,
-          callToActionType: leadForm.callToActionType || 'LEARN_MORE',
-          callToActionDescription: leadForm.callToActionDescription || 'Submit',
-          fields: leadFormFields,
-        }
-      };
-      
-      if (leadForm.postSubmitHeadline) {
-        leadFormAssetPayload.leadFormAsset.postSubmitHeadline = leadForm.postSubmitHeadline;
-      }
-      if (leadForm.postSubmitDescription) {
-        leadFormAssetPayload.leadFormAsset.postSubmitDescription = leadForm.postSubmitDescription;
-      }
-      
-      const leadFormAssetResult = await makeGoogleAdsRequest({
-        customerId,
-        endpoint: 'assets:mutate',
-        body: {
-          operations: [{
-            create: leadFormAssetPayload
-          }]
-        },
-        externalUserId,
-        accountId,
-        loginCustomerId: loginCustomerId || customerId,
-      });
-
-      const leadFormAssetResourceName = leadFormAssetResult?.results?.[0]?.resourceName;
-      
-      if (leadFormAssetResourceName) {
-        console.log('Lead form asset created:', leadFormAssetResourceName);
+      try {
+        const leadFormFields = (leadForm.fields || ['FULL_NAME', 'EMAIL', 'PHONE_NUMBER']).map(field => ({
+          inputType: field
+        }));
         
-        await makeGoogleAdsRequest({
-          customerId,
-          endpoint: 'campaignAssets:mutate',
-          body: {
-            operations: [{
-              create: {
-                campaign: campaignResourceName,
-                asset: leadFormAssetResourceName,
-                fieldType: 'LEAD_FORM',
-                status: 'ENABLED',
-              }
-            }]
-          },
+        const leadFormAssetPayload = {
+          leadFormAsset: {
+            businessName: leadForm.businessName,
+            headline: leadForm.headline || 'Contact Us',
+            description: leadForm.description || 'Fill out this form and we will contact you.',
+            privacyPolicyUrl: leadForm.privacyPolicyUrl,
+            callToActionType: leadForm.callToActionType || 'LEARN_MORE',
+            callToActionDescription: leadForm.callToActionDescription || 'Submit',
+            fields: leadFormFields,
+          }
+        };
+        
+        if (leadForm.postSubmitHeadline) {
+          leadFormAssetPayload.leadFormAsset.postSubmitHeadline = leadForm.postSubmitHeadline;
+        }
+        if (leadForm.postSubmitDescription) {
+          leadFormAssetPayload.leadFormAsset.postSubmitDescription = leadForm.postSubmitDescription;
+        }
+        
+        const leadFormAssetResult = await makeGoogleAdsRequest({
           externalUserId,
           accountId,
+          path: `/customers/${customerId}/assets:mutate`,
+          method: 'POST',
+          body: {
+            operations: [{
+              create: leadFormAssetPayload
+            }]
+          },
           loginCustomerId: loginCustomerId || customerId,
         });
-        console.log('Lead form asset linked to campaign');
+
+        const leadFormAssetResourceName = leadFormAssetResult?.results?.[0]?.resourceName;
+        
+        if (leadFormAssetResourceName) {
+          console.log('Lead form asset created:', leadFormAssetResourceName);
+          
+          await makeGoogleAdsRequest({
+            externalUserId,
+            accountId,
+            path: `/customers/${customerId}/campaignAssets:mutate`,
+            method: 'POST',
+            body: {
+              operations: [{
+                create: {
+                  campaign: campaignResourceName,
+                  asset: leadFormAssetResourceName,
+                  fieldType: 'LEAD_FORM',
+                  status: 'ENABLED',
+                }
+              }]
+            },
+            loginCustomerId: loginCustomerId || customerId,
+          });
+          console.log('Lead form asset linked to campaign');
+        }
+      } catch (leadFormError) {
+        console.error('Failed to create lead form asset:', leadFormError.message);
       }
     }
 
     // 12. Create Mobile App Asset (if app/mobileApp provided)
-    const mobileApp = app;
     if (adGroupResourceName && mobileApp && mobileApp.appId) {
       console.log('Creating mobile app asset...');
       
-      const mobileAppAssetResult = await makeGoogleAdsRequest({
-        customerId,
-        endpoint: 'assets:mutate',
-        body: {
-          operations: [{
-            create: {
-              mobileAppAsset: {
-                appId: mobileApp.appId,
-                appStore: mobileApp.appStore || 'GOOGLE_APP_STORE',
-                linkText: (mobileApp.linkText || 'Get the App').substring(0, 25),
-              }
-            }
-          }]
-        },
-        externalUserId,
-        accountId,
-        loginCustomerId: loginCustomerId || customerId,
-      });
-
-      const mobileAppAssetResourceName = mobileAppAssetResult?.results?.[0]?.resourceName;
-      
-      if (mobileAppAssetResourceName) {
-        console.log('Mobile app asset created:', mobileAppAssetResourceName);
-        
-        await makeGoogleAdsRequest({
-          customerId,
-          endpoint: 'adGroupAssets:mutate',
+      try {
+        const mobileAppAssetResult = await makeGoogleAdsRequest({
+          externalUserId,
+          accountId,
+          path: `/customers/${customerId}/assets:mutate`,
+          method: 'POST',
           body: {
             operations: [{
               create: {
-                adGroup: adGroupResourceName,
-                asset: mobileAppAssetResourceName,
-                fieldType: 'MOBILE_APP',
-                status: 'ENABLED',
+                finalUrls: [mobileApp.finalUrl || normalizedFinalUrl],
+                mobileAppAsset: {
+                  appId: mobileApp.appId || 'com.google.android.apps.maps',
+                  appStore: mobileApp.appStore || 'GOOGLE_APP_STORE',
+                  linkText: (mobileApp.linkText || 'Get the App').substring(0, 25),
+                }
               }
             }]
           },
-          externalUserId,
-          accountId,
           loginCustomerId: loginCustomerId || customerId,
         });
-        console.log('Mobile app asset linked to ad group');
+
+        const mobileAppAssetResourceName = mobileAppAssetResult?.results?.[0]?.resourceName;
+        
+        if (mobileAppAssetResourceName) {
+          console.log('Mobile app asset created:', mobileAppAssetResourceName);
+          
+          await makeGoogleAdsRequest({
+            externalUserId,
+            accountId,
+            path: `/customers/${customerId}/adGroupAssets:mutate`,
+            method: 'POST',
+            body: {
+              operations: [{
+                create: {
+                  adGroup: adGroupResourceName,
+                  asset: mobileAppAssetResourceName,
+                  fieldType: 'MOBILE_APP',
+                  status: 'ENABLED',
+                }
+              }]
+            },
+            loginCustomerId: loginCustomerId || customerId,
+          });
+          console.log('Mobile app asset linked to ad group');
+        }
+      } catch (mobileAppError) {
+        console.error('Failed to create mobile app asset:', mobileAppError.message);
       }
     }
 
