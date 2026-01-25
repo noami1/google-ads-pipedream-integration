@@ -1019,52 +1019,62 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
       loginCustomerId: loginCustomerId || customerId,
     });
 
-    // Poll for completion (with timeout)
+    // Poll for completion using GAQL (proxy only supports POST)
     let batchJobStatus = 'PENDING';
-    let results = null;
-    const maxAttempts = 30;
+    const maxAttempts = 60;
     let attempts = 0;
 
     while (batchJobStatus !== 'DONE' && attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
       attempts++;
 
       try {
         const statusResult = await makeGoogleAdsRequest({
           externalUserId,
           accountId,
-          path: `/${batchJobResourceName}`,
-          method: 'GET',
+          path: `/customers/${customerId}/googleAds:search`,
+          method: 'POST',
+          body: {
+            query: `SELECT batch_job.status, batch_job.metadata.executed_operation_count FROM batch_job WHERE batch_job.resource_name = '${batchJobResourceName}'`
+          },
           loginCustomerId: loginCustomerId || customerId,
         });
 
-        batchJobStatus = statusResult.status || 'PENDING';
+        if (statusResult.results?.[0]?.batchJob?.status) {
+          batchJobStatus = statusResult.results[0].batchJob.status;
+          console.log(`Batch job status: ${batchJobStatus}, executed: ${statusResult.results[0].batchJob.metadata?.executedOperationCount || 0}/${mutateOperations.length}`);
+        }
       } catch (e) {
-        console.log('Polling status check failed (expected with some proxies):', e.message);
-        break;
+        console.log('Polling status check failed:', e.message);
       }
     }
 
-    // Try to get results
-    try {
-      const listResults = await makeGoogleAdsRequest({
-        externalUserId,
-        accountId,
-        path: `/${batchJobResourceName}:listResults`,
-        method: 'GET',
-        loginCustomerId: loginCustomerId || customerId,
-      });
-      results = listResults.results;
-    } catch (e) {
-      console.log('Could not fetch batch job results:', e.message);
+    // Query the created campaign to verify success
+    let createdCampaign = null;
+    if (batchJobStatus === 'DONE') {
+      try {
+        const campaignResult = await makeGoogleAdsRequest({
+          externalUserId,
+          accountId,
+          path: `/customers/${customerId}/googleAds:search`,
+          method: 'POST',
+          body: {
+            query: `SELECT campaign.id, campaign.name, campaign.status FROM campaign WHERE campaign.name = '${campaignName}'`
+          },
+          loginCustomerId: loginCustomerId || customerId,
+        });
+        createdCampaign = campaignResult.results?.[0]?.campaign;
+      } catch (e) {
+        console.log('Could not verify created campaign:', e.message);
+      }
     }
 
     res.json({
-      success: true,
+      success: batchJobStatus === 'DONE',
       batchJob: batchJobResourceName,
       operationsCount: mutateOperations.length,
       status: batchJobStatus,
-      results,
+      campaign: createdCampaign,
     });
 
   } catch (error) {
