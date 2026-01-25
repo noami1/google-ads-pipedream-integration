@@ -1901,7 +1901,7 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              query: `SELECT customer_asset.asset, customer_asset.field_type, customer_asset.status FROM customer_asset WHERE customer_asset.field_type = 'LOCATION'`
+              query: `SELECT asset.id, asset.name, asset.type FROM asset WHERE asset.type = 'LOCATION'`
             })
           }
         );
