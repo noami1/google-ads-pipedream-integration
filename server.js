@@ -847,12 +847,12 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
             await makeGoogleAdsRequest({
               externalUserId,
               accountId,
-              path: `/customers/${customerId}/adGroupAssets:mutate`,
+              path: `/customers/${customerId}/campaignAssets:mutate`,
               method: 'POST',
               body: {
                 operations: [{
                   create: {
-                    adGroup: adGroupResourceName,
+                    campaign: campaignResourceName,
                     asset: assetResourceName,
                     fieldType: 'CALLOUT',
                     status: 'ENABLED',
@@ -900,12 +900,12 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
           await makeGoogleAdsRequest({
             externalUserId,
             accountId,
-            path: `/customers/${customerId}/adGroupAssets:mutate`,
+            path: `/customers/${customerId}/campaignAssets:mutate`,
             method: 'POST',
             body: {
               operations: [{
                 create: {
-                  adGroup: adGroupResourceName,
+                  campaign: campaignResourceName,
                   asset: assetResourceName,
                   fieldType: 'SITELINK',
                   status: 'ENABLED',
@@ -965,12 +965,12 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
         await makeGoogleAdsRequest({
           externalUserId,
           accountId,
-          path: `/customers/${customerId}/adGroupAssets:mutate`,
+          path: `/customers/${customerId}/campaignAssets:mutate`,
           method: 'POST',
           body: {
             operations: [{
               create: {
-                adGroup: adGroupResourceName,
+                campaign: campaignResourceName,
                 asset: assetResourceName,
                 fieldType: 'PROMOTION',
                 status: 'ENABLED',
@@ -1029,14 +1029,14 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
         await makeGoogleAdsRequest({
           externalUserId,
           accountId,
-          path: `/customers/${customerId}/adGroupAssets:mutate`,
-          method: 'POST',
-          body: {
-            operations: [{
-              create: {
-                adGroup: adGroupResourceName,
-                asset: assetResourceName,
-                fieldType: 'PRICE',
+            path: `/customers/${customerId}/campaignAssets:mutate`,
+            method: 'POST',
+            body: {
+              operations: [{
+                create: {
+                  campaign: campaignResourceName,
+                  asset: assetResourceName,
+                  fieldType: 'PRICE',
                 status: 'ENABLED',
               }
             }]
@@ -1082,14 +1082,14 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
           await makeGoogleAdsRequest({
             externalUserId,
             accountId,
-            path: `/customers/${customerId}/adGroupAssets:mutate`,
-            method: 'POST',
-            body: {
-              operations: [{
-                create: {
-                  adGroup: adGroupResourceName,
-                  asset: callAssetResourceName,
-                  fieldType: 'CALL',
+          path: `/customers/${customerId}/campaignAssets:mutate`,
+          method: 'POST',
+          body: {
+            operations: [{
+              create: {
+                campaign: campaignResourceName,
+                asset: callAssetResourceName,
+                fieldType: 'CALL',
                   status: 'ENABLED',
                 }
               }]
@@ -1208,14 +1208,14 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
           await makeGoogleAdsRequest({
             externalUserId,
             accountId,
-            path: `/customers/${customerId}/adGroupAssets:mutate`,
-            method: 'POST',
-            body: {
-              operations: [{
-                create: {
-                  adGroup: adGroupResourceName,
-                  asset: mobileAppAssetResourceName,
-                  fieldType: 'MOBILE_APP',
+          path: `/customers/${customerId}/campaignAssets:mutate`,
+          method: 'POST',
+          body: {
+            operations: [{
+              create: {
+                campaign: campaignResourceName,
+                asset: mobileAppAssetResourceName,
+                fieldType: 'MOBILE_APP',
                   status: 'ENABLED',
                 }
               }]
