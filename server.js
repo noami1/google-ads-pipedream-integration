@@ -1186,7 +1186,9 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
           body: {
             operations: [{
               create: {
-                finalUrls: [mobileApp.finalUrl || normalizedFinalUrl],
+                finalUrls: [mobileApp.finalUrl || (mobileApp.appStore === 'APPLE_APP_STORE' 
+                  ? `https://apps.apple.com/app/id${mobileApp.appId}`
+                  : `https://play.google.com/store/apps/details?id=${mobileApp.appId || 'com.google.android.apps.maps'}`)],
                 mobileAppAsset: {
                   appId: mobileApp.appId || 'com.google.android.apps.maps',
                   appStore: mobileApp.appStore || 'GOOGLE_APP_STORE',
