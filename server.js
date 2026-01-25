@@ -934,6 +934,10 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
         }
       };
 
+      if (promotion.occasion) {
+        promotionAssetPayload.promotionAsset.occasion = promotion.occasion;
+      }
+
       if (promotion.percentOff) {
         promotionAssetPayload.promotionAsset.percentOff = String(promotion.percentOff * 10000);
       } else if (promotion.moneyAmountOff) {
@@ -980,19 +984,27 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
     }
 
     // 9. Create Price Asset (if ad group exists and prices provided)
-    if (adGroupResourceName && prices && prices.header && prices.items?.length > 0) {
+    // Support both "items" and "offerings" array names for flexibility
+    const priceItems = prices?.items || prices?.offerings;
+    if (adGroupResourceName && prices && priceItems?.length > 0) {
       console.log('Creating price asset...');
       
-      const priceOfferings = prices.items.map(item => ({
-        header: item.header.substring(0, 25),
-        description: item.description?.substring(0, 25) || '',
-        price: {
-          currencyCode: item.currencyCode || 'USD',
-          amountMicros: String((item.price || 0) * 1000000),
-        },
-        unit: item.unit || 'PER_MONTH',
-        finalUrl: item.finalUrl || normalizedFinalUrl,
-      }));
+      const priceOfferings = priceItems.map(item => {
+        // Support both flat (item.price, item.currencyCode) and nested (item.price.amount, item.price.currencyCode) formats
+        const priceAmount = typeof item.price === 'object' ? item.price.amount : item.price;
+        const currencyCode = typeof item.price === 'object' ? item.price.currencyCode : (item.currencyCode || 'USD');
+        
+        return {
+          header: item.header.substring(0, 25),
+          description: item.description?.substring(0, 25) || '',
+          price: {
+            currencyCode: currencyCode,
+            amountMicros: String((priceAmount || 0) * 1000000),
+          },
+          unit: item.unit || 'PER_MONTH',
+          finalUrl: item.finalUrl || normalizedFinalUrl,
+        };
+      });
 
       const priceAssetPayload = {
         priceAsset: {
