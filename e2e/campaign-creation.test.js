@@ -594,7 +594,113 @@ describe('Google Ads Campaign Creation E2E', () => {
     expect(calloutTexts).toContain('24/7 Support');
     expect(calloutTexts).toContain('Money Back Guarantee');
 
-    console.log('\n All verifications passed! Campaign with callout extensions created successfully.');
+     console.log('\n All verifications passed! Campaign with callout extensions created successfully.');
+     
+   }, 300000);
+
+  it('should create full campaign with all extensions (KEEP FOR REVIEW)', async () => {
+    const fullCampaignName = `Full Extensions Test ${Date.now()}`;
     
+    console.log(`\nCreating FULL campaign with all extensions: ${fullCampaignName}`);
+    console.log('This campaign will NOT be cleaned up - check it in Google Ads UI');
+
+    const campaignData = {
+      externalUserId: TEST_CONFIG.externalUserId,
+      accountId: TEST_CONFIG.accountId,
+      campaignName: fullCampaignName,
+      budgetAmountMicros: 100000,
+      status: 'PAUSED',
+      adGroupName: `${fullCampaignName} - Ad Group`,
+      maxCpcUsd: 0.50,
+      
+      keywords: [
+        { text: 'full test keyword one', matchType: 'BROAD' },
+        { text: 'full test keyword two', matchType: 'PHRASE' },
+      ],
+      
+      finalUrl: 'https://example.com/full-test',
+      displayPath1: 'full',
+      displayPath2: 'test',
+      adHeadlines: [
+        'Full Test Headline One',
+        'Full Test Headline Two',
+        'Full Test Headline Three',
+      ],
+      adDescriptions: [
+        'Full test description one for the responsive search ad.',
+        'Full test description two with all extensions included.',
+      ],
+      
+      // Callouts
+      callouts: [
+        'Free Shipping',
+        '24/7 Support',
+        'Money Back Guarantee',
+        'Best Price',
+      ],
+      
+      // Sitelinks
+      sitelinks: [
+        { text: 'About Us', finalUrl: 'https://example.com/about', description1: 'Learn about our company', description2: 'Our mission and values' },
+        { text: 'Contact', finalUrl: 'https://example.com/contact', description1: 'Get in touch', description2: 'We respond within 24h' },
+        { text: 'Products', finalUrl: 'https://example.com/products', description1: 'Browse our catalog', description2: 'Over 1000 items' },
+      ],
+      
+      // Promotion
+      promotion: {
+        promotionTarget: 'Winter Sale',
+        percentOff: 20,
+        startDate: '2025-01-01',
+        endDate: '2025-12-31',
+        finalUrl: 'https://example.com/sale',
+        occasion: 'NONE',
+        languageCode: 'en',
+      },
+      
+      // Prices
+      prices: {
+        type: 'SERVICES',
+        priceQualifier: 'FROM',
+        languageCode: 'en',
+        items: [
+          { header: 'Basic Plan', description: 'For starters', price: 9.99, unit: 'PER_MONTH', finalUrl: 'https://example.com/basic', currencyCode: 'USD' },
+          { header: 'Pro Plan', description: 'For professionals', price: 29.99, unit: 'PER_MONTH', finalUrl: 'https://example.com/pro', currencyCode: 'USD' },
+          { header: 'Enterprise', description: 'For teams', price: 99.99, unit: 'PER_MONTH', finalUrl: 'https://example.com/enterprise', currencyCode: 'USD' },
+        ],
+      },
+    };
+
+    // GIVEN: Create complete campaign with all extensions
+    console.log('\n1. Calling createCompleteCampaign with ALL extensions...');
+    const createResponse = await rateLimitedFetch(
+      `${BASE_URL}/api/customers/${TEST_CONFIG.customerId}/createCompleteCampaign`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(campaignData),
+      }
+    );
+
+    expect(createResponse.ok).toBe(true);
+    const createResult = await createResponse.json();
+    console.log('Create response:', JSON.stringify(createResult, null, 2));
+
+    // THEN: Campaign created successfully
+    expect(createResult.success).toBe(true);
+    expect(createResult.campaign).toBeTruthy();
+    expect(createResult.campaign.name).toBe(fullCampaignName);
+    expect(createResult.adGroup).toBeTruthy();
+
+    const campaignId = createResult.campaign.id;
+    const adGroupId = createResult.adGroup.resourceName.split('/').pop();
+
+    console.log('\n========================================');
+    console.log('CAMPAIGN KEPT FOR MANUAL REVIEW');
+    console.log(`Campaign Name: ${fullCampaignName}`);
+    console.log(`Campaign ID: ${campaignId}`);
+    console.log(`Ad Group ID: ${adGroupId}`);
+    console.log('Check in Google Ads UI to verify all extensions');
+    console.log('========================================\n');
+
   }, 300000);
 });

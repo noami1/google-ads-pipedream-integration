@@ -622,6 +622,7 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
       // Max CPC (in USD)
       maxCpcUsd = 1.00,
       // Optional extensions
+      sitelinks,
       promotion,
       prices,
       call,
@@ -643,7 +644,7 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
 
     const customerCurrency = await getCustomerCurrency({ externalUserId, accountId, customerId, loginCustomerId });
     const maxCpcInCustomerCurrency = await convertUsdToTargetCurrency(maxCpcUsd, customerCurrency);
-    const cpcBidMicros = String(Math.round(maxCpcInCustomerCurrency * 1000000));
+    const cpcBidMicros = String(Math.round(maxCpcInCustomerCurrency * 1000000 / 10000) * 10000);
 
     // 1. Create Campaign Budget
     console.log('Creating campaign budget...');
@@ -862,6 +863,171 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
             console.log('Callout asset created and linked:', assetResourceName);
           }
         }
+      }
+    }
+
+    // 7. Create Sitelink Assets (if ad group exists and sitelinks provided)
+    if (adGroupResourceName && sitelinks && sitelinks.length > 0) {
+      console.log(`Creating ${sitelinks.length} sitelink assets...`);
+      
+      for (const sitelink of sitelinks) {
+        const sitelinkAssetPayload = {
+          finalUrls: [sitelink.finalUrl],
+          sitelinkAsset: {
+            linkText: sitelink.text.substring(0, 25),
+          }
+        };
+        
+        if (sitelink.description1) {
+          sitelinkAssetPayload.sitelinkAsset.description1 = sitelink.description1.substring(0, 35);
+        }
+        if (sitelink.description2) {
+          sitelinkAssetPayload.sitelinkAsset.description2 = sitelink.description2.substring(0, 35);
+        }
+
+        const assetResult = await makeGoogleAdsRequest({
+          externalUserId,
+          accountId,
+          path: `/customers/${customerId}/assets:mutate`,
+          method: 'POST',
+          body: { operations: [{ create: sitelinkAssetPayload }] },
+          loginCustomerId: loginCustomerId || customerId,
+        });
+
+        const assetResourceName = assetResult.results?.[0]?.resourceName;
+        if (assetResourceName) {
+          await makeGoogleAdsRequest({
+            externalUserId,
+            accountId,
+            path: `/customers/${customerId}/adGroupAssets:mutate`,
+            method: 'POST',
+            body: {
+              operations: [{
+                create: {
+                  adGroup: adGroupResourceName,
+                  asset: assetResourceName,
+                  fieldType: 'SITELINK',
+                }
+              }]
+            },
+            loginCustomerId: loginCustomerId || customerId,
+          });
+          console.log('Sitelink asset created and linked:', assetResourceName);
+        }
+      }
+    }
+
+    // 8. Create Promotion Asset (if ad group exists and promotion provided)
+    if (adGroupResourceName && promotion) {
+      console.log('Creating promotion asset...');
+      
+      const promotionAssetPayload = {
+        finalUrls: [promotion.finalUrl || normalizedFinalUrl],
+        promotionAsset: {
+          promotionTarget: promotion.promotionTarget || 'Sale',
+          discountModifier: promotion.discountModifier || 'UP_TO',
+          redemptionStartDate: promotion.startDate,
+          redemptionEndDate: promotion.endDate,
+          languageCode: promotion.languageCode || 'en',
+        }
+      };
+
+      if (promotion.percentOff) {
+        promotionAssetPayload.promotionAsset.percentOff = String(promotion.percentOff * 10000);
+      } else if (promotion.moneyAmountOff) {
+        promotionAssetPayload.promotionAsset.moneyAmountOff = {
+          currencyCode: promotion.currencyCode || 'USD',
+          amountMicros: String(promotion.moneyAmountOff * 1000000),
+        };
+      }
+
+      if (promotion.promotionCode) {
+        promotionAssetPayload.promotionAsset.promotionCode = promotion.promotionCode;
+      }
+
+      const assetResult = await makeGoogleAdsRequest({
+        externalUserId,
+        accountId,
+        path: `/customers/${customerId}/assets:mutate`,
+        method: 'POST',
+        body: { operations: [{ create: promotionAssetPayload }] },
+        loginCustomerId: loginCustomerId || customerId,
+      });
+
+      const assetResourceName = assetResult.results?.[0]?.resourceName;
+      if (assetResourceName) {
+        await makeGoogleAdsRequest({
+          externalUserId,
+          accountId,
+          path: `/customers/${customerId}/adGroupAssets:mutate`,
+          method: 'POST',
+          body: {
+            operations: [{
+              create: {
+                adGroup: adGroupResourceName,
+                asset: assetResourceName,
+                fieldType: 'PROMOTION',
+              }
+            }]
+          },
+          loginCustomerId: loginCustomerId || customerId,
+        });
+        console.log('Promotion asset created and linked:', assetResourceName);
+      }
+    }
+
+    // 9. Create Price Asset (if ad group exists and prices provided)
+    if (adGroupResourceName && prices && prices.header && prices.items?.length > 0) {
+      console.log('Creating price asset...');
+      
+      const priceOfferings = prices.items.map(item => ({
+        header: item.header.substring(0, 25),
+        description: item.description?.substring(0, 25) || '',
+        price: {
+          currencyCode: item.currencyCode || 'USD',
+          amountMicros: String((item.price || 0) * 1000000),
+        },
+        unit: item.unit || 'PER_MONTH',
+        finalUrl: item.finalUrl || normalizedFinalUrl,
+      }));
+
+      const priceAssetPayload = {
+        priceAsset: {
+          type: prices.type || 'SERVICES',
+          priceQualifier: prices.priceQualifier || 'FROM',
+          languageCode: prices.languageCode || 'en',
+          priceOfferings,
+        }
+      };
+
+      const assetResult = await makeGoogleAdsRequest({
+        externalUserId,
+        accountId,
+        path: `/customers/${customerId}/assets:mutate`,
+        method: 'POST',
+        body: { operations: [{ create: priceAssetPayload }] },
+        loginCustomerId: loginCustomerId || customerId,
+      });
+
+      const assetResourceName = assetResult.results?.[0]?.resourceName;
+      if (assetResourceName) {
+        await makeGoogleAdsRequest({
+          externalUserId,
+          accountId,
+          path: `/customers/${customerId}/adGroupAssets:mutate`,
+          method: 'POST',
+          body: {
+            operations: [{
+              create: {
+                adGroup: adGroupResourceName,
+                asset: assetResourceName,
+                fieldType: 'PRICE',
+              }
+            }]
+          },
+          loginCustomerId: loginCustomerId || customerId,
+        });
+        console.log('Price asset created and linked:', assetResourceName);
       }
     }
 
