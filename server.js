@@ -645,436 +645,239 @@ app.post('/api/customers/:customerId/createCompleteCampaign', async (req, res) =
     const maxCpcInCustomerCurrency = await convertUsdToTargetCurrency(maxCpcUsd, customerCurrency);
     const cpcBidMicros = String(Math.round(maxCpcInCustomerCurrency * 1000000));
 
-    // Create batch job
-    const batchJobResult = await makeGoogleAdsRequest({
+    // 1. Create Campaign Budget
+    console.log('Creating campaign budget...');
+    const budgetResult = await makeGoogleAdsRequest({
       externalUserId,
       accountId,
-      path: `/customers/${customerId}/batchJobs:mutate`,
+      path: `/customers/${customerId}/campaignBudgets:mutate`,
       method: 'POST',
       body: {
-        operation: { create: {} }
+        operations: [{
+          create: {
+            name: `${campaignName} Budget`,
+            deliveryMethod: 'STANDARD',
+            amountMicros: String(budgetAmountMicros),
+          }
+        }]
       },
       loginCustomerId: loginCustomerId || customerId,
     });
 
-    const batchJobResourceName = batchJobResult.result?.resourceName;
-    if (!batchJobResourceName) {
-      throw new Error('Failed to create batch job');
+    const budgetResourceName = budgetResult.results?.[0]?.resourceName;
+    if (!budgetResourceName) {
+      throw new Error('Failed to create budget: ' + JSON.stringify(budgetResult));
     }
+    console.log('Budget created:', budgetResourceName);
 
-    // Build mutate operations
-    const mutateOperations = [];
-    let assetTempId = -10;
-
-    // 1. Campaign Budget (temp ID: -1)
-    mutateOperations.push({
-      campaignBudgetOperation: {
-        create: {
-          resourceName: `customers/${customerId}/campaignBudgets/-1`,
-          name: `${campaignName} Budget`,
-          deliveryMethod: 'STANDARD',
-          amountMicros: String(budgetAmountMicros),
-        }
-      }
-    });
-
-    // 2. Campaign (temp ID: -2)
-    mutateOperations.push({
-      campaignOperation: {
-        create: {
-          resourceName: `customers/${customerId}/campaigns/-2`,
-          name: campaignName,
-          advertisingChannelType: 'SEARCH',
-          status,
-          manualCpc: {},
-          campaignBudget: `customers/${customerId}/campaignBudgets/-1`,
-          networkSettings: {
-            targetGoogleSearch: true,
-            targetSearchNetwork: true,
-            targetContentNetwork: false,
-            targetPartnerSearchNetwork: false,
-          },
-          containsEuPoliticalAdvertising: 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING',
-        }
-      }
-    });
-
-    // 3. Ad Group (temp ID: -3)
-    if (adGroupName) {
-      mutateOperations.push({
-        adGroupOperation: {
+    // 2. Create Campaign
+    console.log('Creating campaign...');
+    const campaignResult = await makeGoogleAdsRequest({
+      externalUserId,
+      accountId,
+      path: `/customers/${customerId}/campaigns:mutate`,
+      method: 'POST',
+      body: {
+        operations: [{
           create: {
-            resourceName: `customers/${customerId}/adGroups/-3`,
-            name: adGroupName,
-            campaign: `customers/${customerId}/campaigns/-2`,
-            type: 'SEARCH_STANDARD',
-            status: 'ENABLED',
-            cpcBidMicros,
+            name: campaignName,
+            advertisingChannelType: 'SEARCH',
+            status,
+            manualCpc: {},
+            campaignBudget: budgetResourceName,
+            networkSettings: {
+              targetGoogleSearch: true,
+              targetSearchNetwork: true,
+              targetContentNetwork: false,
+              targetPartnerSearchNetwork: false,
+            },
+            containsEuPoliticalAdvertising: 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING',
           }
-        }
+        }]
+      },
+      loginCustomerId: loginCustomerId || customerId,
+    });
+
+    const campaignResourceName = campaignResult.results?.[0]?.resourceName;
+    if (!campaignResourceName) {
+      throw new Error('Failed to create campaign: ' + JSON.stringify(campaignResult));
+    }
+    console.log('Campaign created:', campaignResourceName);
+
+    let adGroupResourceName = null;
+    let createdAdGroup = null;
+
+    // 3. Create Ad Group (if adGroupName provided)
+    if (adGroupName) {
+      console.log('Creating ad group...');
+      const adGroupResult = await makeGoogleAdsRequest({
+        externalUserId,
+        accountId,
+        path: `/customers/${customerId}/adGroups:mutate`,
+        method: 'POST',
+        body: {
+          operations: [{
+            create: {
+              name: adGroupName,
+              campaign: campaignResourceName,
+              type: 'SEARCH_STANDARD',
+              status: 'ENABLED',
+              cpcBidMicros,
+            }
+          }]
+        },
+        loginCustomerId: loginCustomerId || customerId,
       });
+
+      adGroupResourceName = adGroupResult.results?.[0]?.resourceName;
+      if (!adGroupResourceName) {
+        throw new Error('Failed to create ad group: ' + JSON.stringify(adGroupResult));
+      }
+      console.log('Ad group created:', adGroupResourceName);
+      createdAdGroup = { resourceName: adGroupResourceName, name: adGroupName };
     }
 
-    // 4. Keywords
-    if (keywords && keywords.length > 0) {
-      keywords.forEach((keyword, index) => {
+    // 4. Create Keywords (if ad group exists and keywords provided)
+    if (adGroupResourceName && keywords && keywords.length > 0) {
+      console.log(`Creating ${keywords.length} keywords...`);
+      const keywordOperations = keywords.map(keyword => {
         const kw = typeof keyword === 'string' ? { text: keyword, matchType: 'BROAD' } : keyword;
-        mutateOperations.push({
-          adGroupCriterionOperation: {
-            create: {
-              adGroup: `customers/${customerId}/adGroups/-3`,
-              status: 'ENABLED',
-              keyword: {
-                text: kw.text,
-                matchType: kw.matchType || 'BROAD',
-              }
+        return {
+          create: {
+            adGroup: adGroupResourceName,
+            status: 'ENABLED',
+            keyword: {
+              text: kw.text,
+              matchType: kw.matchType || 'BROAD',
             }
           }
-        });
+        };
       });
+
+      const keywordsResult = await makeGoogleAdsRequest({
+        externalUserId,
+        accountId,
+        path: `/customers/${customerId}/adGroupCriteria:mutate`,
+        method: 'POST',
+        body: { operations: keywordOperations },
+        loginCustomerId: loginCustomerId || customerId,
+      });
+      console.log('Keywords created:', keywordsResult.results?.length || 0);
     }
 
-    // 5. Responsive Search Ad
-    if (adHeadlines.length >= 2 && adDescriptions.length >= 2 && finalUrl) {
+    // 5. Create Responsive Search Ad (if ad group exists and ad content provided)
+    if (adGroupResourceName && adHeadlines.length >= 2 && adDescriptions.length >= 2 && finalUrl) {
+      console.log('Creating responsive search ad...');
       const headlines = adHeadlines.map(h => ({ text: h.substring(0, 30) }));
       const descriptions = adDescriptions.map(d => ({ text: d.substring(0, 90) }));
 
-      const adOperation = {
-        adGroupAdOperation: {
-          create: {
-            adGroup: `customers/${customerId}/adGroups/-3`,
-            status: 'ENABLED',
-            ad: {
-              responsiveSearchAd: {
-                headlines,
-                descriptions,
-              },
-              finalUrls: [normalizedFinalUrl],
-            }
-          }
+      const adCreatePayload = {
+        adGroup: adGroupResourceName,
+        status: 'ENABLED',
+        ad: {
+          responsiveSearchAd: {
+            headlines,
+            descriptions,
+          },
+          finalUrls: [normalizedFinalUrl],
         }
       };
 
       // Add display paths if provided
       if (path1) {
-        adOperation.adGroupAdOperation.create.ad.responsiveSearchAd.path1 = path1.substring(0, 15);
+        adCreatePayload.ad.responsiveSearchAd.path1 = path1.substring(0, 15);
       }
       if (path2) {
-        adOperation.adGroupAdOperation.create.ad.responsiveSearchAd.path2 = path2.substring(0, 15);
+        adCreatePayload.ad.responsiveSearchAd.path2 = path2.substring(0, 15);
       }
 
-      mutateOperations.push(adOperation);
-    }
-
-    // 6. Promotion Asset
-    if (promotion && (promotion.promotionTarget || promotion.finalUrl)) {
-      const promotionAssetTempId = assetTempId--;
-      const promotionAsset = {
-        resourceName: `customers/${customerId}/assets/${promotionAssetTempId}`,
-        promotionAsset: {
-          promotionTarget: (promotion.promotionTarget || '').substring(0, 20),
-          languageCode: promotion.languageCode || 'en',
-        }
-      };
-
-      if (promotion.finalUrl) {
-        promotionAsset.finalUrls = [promotion.finalUrl];
-      }
-
-      if (promotion.redemptionStartDate) {
-        promotionAsset.promotionAsset.redemptionStartDate = promotion.redemptionStartDate;
-      }
-      if (promotion.redemptionEndDate) {
-        promotionAsset.promotionAsset.redemptionEndDate = promotion.redemptionEndDate;
-      }
-
-      if (promotion.moneyAmountOff) {
-        promotionAsset.promotionAsset.moneyAmountOff = {
-          amountMicros: String(Math.round(promotion.moneyAmountOff.amount * 1000000)),
-          currencyCode: promotion.moneyAmountOff.currencyCode || 'USD'
-        };
-      } else if (promotion.percentOff) {
-        promotionAsset.promotionAsset.percentOff = String(promotion.percentOff * 1000000);
-      }
-
-      if (promotion.occasion && promotion.occasion !== 'NONE' && promotion.occasion !== '') {
-        promotionAsset.promotionAsset.occasion = promotion.occasion;
-      }
-      if (promotion.promotionCode) {
-        promotionAsset.promotionAsset.promotionCode = promotion.promotionCode;
-      }
-      if (promotion.ordersOverAmount) {
-        promotionAsset.promotionAsset.ordersOverAmount = {
-          amountMicros: String(Math.round(promotion.ordersOverAmount.amount * 1000000)),
-          currencyCode: promotion.ordersOverAmount.currencyCode || 'USD'
-        };
-      }
-
-      mutateOperations.push({ assetOperation: { create: promotionAsset } });
-
-      // Link to ad group
-      mutateOperations.push({
-        adGroupAssetOperation: {
-          create: {
-            adGroup: `customers/${customerId}/adGroups/-3`,
-            asset: `customers/${customerId}/assets/${promotionAssetTempId}`,
-            fieldType: 'PROMOTION',
-          }
-        }
-      });
-    }
-
-    // 7. Price Asset
-    if (prices && prices.offerings && prices.offerings.length >= 3) {
-      const priceAssetTempId = assetTempId--;
-      const priceOfferings = prices.offerings.map(o => ({
-        header: o.header.substring(0, 25),
-        description: o.description.substring(0, 25),
-        price: {
-          amountMicros: String(Math.round(o.price.amount * 1000000)),
-          currencyCode: o.price.currencyCode || 'USD'
+      const adResult = await makeGoogleAdsRequest({
+        externalUserId,
+        accountId,
+        path: `/customers/${customerId}/adGroupAds:mutate`,
+        method: 'POST',
+        body: {
+          operations: [{ create: adCreatePayload }]
         },
-        finalUrl: o.finalUrl,
-        unit: o.unit || 'UNSPECIFIED',
-      }));
-
-      const priceAsset = {
-        resourceName: `customers/${customerId}/assets/${priceAssetTempId}`,
-        priceAsset: {
-          type: prices.type,
-          priceOfferings,
-          languageCode: prices.languageCode || 'en',
-        }
-      };
-
-      if (prices.priceQualifier && prices.priceQualifier !== 'NONE') {
-        priceAsset.priceAsset.priceQualifier = prices.priceQualifier;
-      }
-
-      mutateOperations.push({ assetOperation: { create: priceAsset } });
-
-      mutateOperations.push({
-        adGroupAssetOperation: {
-          create: {
-            adGroup: `customers/${customerId}/adGroups/-3`,
-            asset: `customers/${customerId}/assets/${priceAssetTempId}`,
-            fieldType: 'PRICE',
-          }
-        }
+        loginCustomerId: loginCustomerId || customerId,
       });
+      console.log('Ad created:', adResult.results?.[0]?.resourceName);
     }
 
-    // 8. Call Asset
-    if (call && call.phoneNumber) {
-      const callAssetTempId = assetTempId--;
-      mutateOperations.push({
-        assetOperation: {
-          create: {
-            resourceName: `customers/${customerId}/assets/${callAssetTempId}`,
-            callAsset: {
-              countryCode: call.countryCode || 'US',
-              phoneNumber: call.phoneNumber,
-            }
-          }
-        }
-      });
-
-      mutateOperations.push({
-        adGroupAssetOperation: {
-          create: {
-            adGroup: `customers/${customerId}/adGroups/-3`,
-            asset: `customers/${customerId}/assets/${callAssetTempId}`,
-            fieldType: 'CALL',
-          }
-        }
-      });
-    }
-
-    // 9. Callout Assets
-    if (callouts && callouts.length > 0) {
-      callouts.forEach(calloutItem => {
-        // Support both string format and object format with dates
+    // 6. Create Callout Assets (if ad group exists and callouts provided)
+    if (adGroupResourceName && callouts && callouts.length > 0) {
+      console.log(`Creating ${callouts.length} callout assets...`);
+      
+      for (const calloutItem of callouts) {
         const calloutText = typeof calloutItem === 'string' ? calloutItem : calloutItem.text;
         const startDate = typeof calloutItem === 'object' ? calloutItem.startDate : undefined;
         const endDate = typeof calloutItem === 'object' ? calloutItem.endDate : undefined;
-        
+
         if (calloutText && calloutText.trim()) {
-          const calloutAssetTempId = assetTempId--;
-          const calloutAsset = {
-            resourceName: `customers/${customerId}/assets/${calloutAssetTempId}`,
+          // Create the callout asset
+          const calloutAssetPayload = {
             calloutAsset: {
               calloutText: calloutText.substring(0, 25),
             }
           };
-          
+
           // Add date scheduling if provided
           if (startDate) {
-            calloutAsset.calloutAsset.startDate = startDate;
+            calloutAssetPayload.calloutAsset.startDate = startDate;
           }
           if (endDate) {
-            calloutAsset.calloutAsset.endDate = endDate;
+            calloutAssetPayload.calloutAsset.endDate = endDate;
           }
-          
-          mutateOperations.push({
-            assetOperation: { create: calloutAsset }
+
+          const assetResult = await makeGoogleAdsRequest({
+            externalUserId,
+            accountId,
+            path: `/customers/${customerId}/assets:mutate`,
+            method: 'POST',
+            body: {
+              operations: [{ create: calloutAssetPayload }]
+            },
+            loginCustomerId: loginCustomerId || customerId,
           });
 
-          mutateOperations.push({
-            adGroupAssetOperation: {
-              create: {
-                adGroup: `customers/${customerId}/adGroups/-3`,
-                asset: `customers/${customerId}/assets/${calloutAssetTempId}`,
-                fieldType: 'CALLOUT',
-              }
-            }
-          });
-        }
-      });
-    }
-
-    // 10. Lead Form Asset
-    if (leadForm && leadForm.businessName && leadForm.headline && leadForm.privacyPolicyUrl) {
-      const leadFormAssetTempId = assetTempId--;
-      const leadFormFields = (leadForm.fields || []).map(f => ({ inputType: f }));
-
-      const leadFormAsset = {
-        resourceName: `customers/${customerId}/assets/${leadFormAssetTempId}`,
-        leadFormAsset: {
-          businessName: leadForm.businessName.substring(0, 25),
-          headline: leadForm.headline.substring(0, 30),
-          description: (leadForm.description || '').substring(0, 200),
-          privacyPolicyUrl: leadForm.privacyPolicyUrl,
-          callToActionType: leadForm.callToActionType || 'LEARN_MORE',
-          callToActionDescription: (leadForm.callToActionDescription || '').substring(0, 30),
-          fields: leadFormFields,
-        }
-      };
-
-      if (leadForm.postSubmitHeadline) {
-        leadFormAsset.leadFormAsset.postSubmitHeadline = leadForm.postSubmitHeadline.substring(0, 30);
-      }
-      if (leadForm.postSubmitDescription) {
-        leadFormAsset.leadFormAsset.postSubmitDescription = leadForm.postSubmitDescription.substring(0, 200);
-      }
-
-      mutateOperations.push({ assetOperation: { create: leadFormAsset } });
-
-      mutateOperations.push({
-        adGroupAssetOperation: {
-          create: {
-            adGroup: `customers/${customerId}/adGroups/-3`,
-            asset: `customers/${customerId}/assets/${leadFormAssetTempId}`,
-            fieldType: 'LEAD_FORM',
+          const assetResourceName = assetResult.results?.[0]?.resourceName;
+          if (assetResourceName) {
+            // Link the asset to the ad group
+            await makeGoogleAdsRequest({
+              externalUserId,
+              accountId,
+              path: `/customers/${customerId}/adGroupAssets:mutate`,
+              method: 'POST',
+              body: {
+                operations: [{
+                  create: {
+                    adGroup: adGroupResourceName,
+                    asset: assetResourceName,
+                    fieldType: 'CALLOUT',
+                  }
+                }]
+              },
+              loginCustomerId: loginCustomerId || customerId,
+            });
+            console.log('Callout asset created and linked:', assetResourceName);
           }
         }
-      });
-    }
-
-    // 11. Mobile App Asset
-    if (mobileApp && mobileApp.appId && mobileApp.linkText) {
-      const appAssetTempId = assetTempId--;
-      mutateOperations.push({
-        assetOperation: {
-          create: {
-            resourceName: `customers/${customerId}/assets/${appAssetTempId}`,
-            mobileAppAsset: {
-              appStore: mobileApp.appStore || 'GOOGLE_APP_STORE',
-              appId: mobileApp.appId,
-              linkText: mobileApp.linkText.substring(0, 25),
-            }
-          }
-        }
-      });
-
-      mutateOperations.push({
-        adGroupAssetOperation: {
-          create: {
-            adGroup: `customers/${customerId}/adGroups/-3`,
-            asset: `customers/${customerId}/assets/${appAssetTempId}`,
-            fieldType: 'MOBILE_APP',
-          }
-        }
-      });
-    }
-
-    console.log(`Adding ${mutateOperations.length} operations to batch job`);
-
-    // Add operations to batch job
-    await makeGoogleAdsRequest({
-      externalUserId,
-      accountId,
-      path: `/${batchJobResourceName}:addOperations`,
-      method: 'POST',
-      body: { mutateOperations },
-      loginCustomerId: loginCustomerId || customerId,
-    });
-
-    // Run the batch job
-    await makeGoogleAdsRequest({
-      externalUserId,
-      accountId,
-      path: `/${batchJobResourceName}:run`,
-      method: 'POST',
-      body: {},
-      loginCustomerId: loginCustomerId || customerId,
-    });
-
-    // Poll for completion using GAQL (proxy only supports POST)
-    let batchJobStatus = 'PENDING';
-    const maxAttempts = 60;
-    let attempts = 0;
-
-    while (batchJobStatus !== 'DONE' && attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      attempts++;
-
-      try {
-        const statusResult = await makeGoogleAdsRequest({
-          externalUserId,
-          accountId,
-          path: `/customers/${customerId}/googleAds:search`,
-          method: 'POST',
-          body: {
-            query: `SELECT batch_job.status, batch_job.metadata.executed_operation_count FROM batch_job WHERE batch_job.resource_name = '${batchJobResourceName}'`
-          },
-          loginCustomerId: loginCustomerId || customerId,
-        });
-
-        if (statusResult.results?.[0]?.batchJob?.status) {
-          batchJobStatus = statusResult.results[0].batchJob.status;
-          console.log(`Batch job status: ${batchJobStatus}, executed: ${statusResult.results[0].batchJob.metadata?.executedOperationCount || 0}/${mutateOperations.length}`);
-        }
-      } catch (e) {
-        console.log('Polling status check failed:', e.message);
       }
     }
 
-    // Query the created campaign to verify success
-    let createdCampaign = null;
-    if (batchJobStatus === 'DONE') {
-      try {
-        const campaignResult = await makeGoogleAdsRequest({
-          externalUserId,
-          accountId,
-          path: `/customers/${customerId}/googleAds:search`,
-          method: 'POST',
-          body: {
-            query: `SELECT campaign.id, campaign.name, campaign.status FROM campaign WHERE campaign.name = '${campaignName}'`
-          },
-          loginCustomerId: loginCustomerId || customerId,
-        });
-        createdCampaign = campaignResult.results?.[0]?.campaign;
-      } catch (e) {
-        console.log('Could not verify created campaign:', e.message);
-      }
-    }
+    // Extract campaign info for response
+    const campaignId = campaignResourceName.split('/').pop();
+    const createdCampaign = {
+      resourceName: campaignResourceName,
+      id: campaignId,
+      name: campaignName,
+      status,
+    };
 
     res.json({
-      success: batchJobStatus === 'DONE',
-      batchJob: batchJobResourceName,
-      operationsCount: mutateOperations.length,
-      status: batchJobStatus,
+      success: true,
       campaign: createdCampaign,
+      adGroup: createdAdGroup,
     });
 
   } catch (error) {
