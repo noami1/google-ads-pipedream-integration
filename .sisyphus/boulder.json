@@ -1,6 +1,8 @@
 {
-  "active_plan": "/Users/noam/Desktop/pipedream-tests/google-adds-integration-example-code/.sisyphus/plans/link-assets-to-campaign.md",
-  "started_at": "2026-01-25T14:28:24.250Z",
-  "session_ids": ["ses_40bd8933bffeLkHjUK1yWDKrwg"],
-  "plan_name": "link-assets-to-campaign"
+  "active_plan": "/Users/noam/Desktop/pipedream-tests/google-adds-integration-example-code/.sisyphus/plans/account-asset-checkers.md",
+  "started_at": "2026-01-25T15:22:18.394Z",
+  "session_ids": [
+    "ses_40bd8933bffeLkHjUK1yWDKrwg"
+  ],
+  "plan_name": "account-asset-checkers"
 }
