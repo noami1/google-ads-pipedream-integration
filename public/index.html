@@ -982,6 +982,12 @@
           <button type="button" onclick="checkLocationAsset()" style="padding:4px 10px; font-size:12px; cursor:pointer;">Check</button>
         </div>
         
+        <!-- Google Analytics Link Status -->
+        <div id="ga4-link-status" style="margin-bottom:8px; padding:8px 12px; border-radius:4px; font-size:13px; display:flex; align-items:center; justify-content:space-between; background:#f5f5f5;">
+          <span id="ga4-link-text" style="color:#666;">Google Analytics 4 - Click to check</span>
+          <button type="button" onclick="checkGA4Link()" style="padding:4px 10px; font-size:12px; cursor:pointer;">Check</button>
+        </div>
+        
         <!-- Check All Button -->
         <button type="button" onclick="checkAllAccountAssets()" style="margin-top:8px; padding:6px 12px; font-size:12px; cursor:pointer; background:#6c757d; color:white; border:none; border-radius:4px;">Check All Account Assets</button>
       </div>
@@ -1928,11 +1934,65 @@
     }
     window.checkLocationAsset = checkLocationAsset;
 
+    async function checkGA4Link() {
+      const statusEl = document.getElementById('ga4-link-status');
+      const textEl = document.getElementById('ga4-link-text');
+      
+      const customerId = selectedCustomerId;
+      const externalUserId = currentUserId;
+      const accountId = selectedAccountId;
+      
+      if (!customerId || !externalUserId || !accountId) {
+        textEl.innerHTML = '⚠️ Select an account and customer above first';
+        textEl.style.color = '#666';
+        statusEl.style.background = '#f5f5f5';
+        return;
+      }
+      
+      textEl.innerHTML = 'Checking...';
+      textEl.style.color = '#666';
+      
+      try {
+        const response = await fetch(
+          `/api/customers/${customerId}/googleAds:search?externalUserId=${encodeURIComponent(externalUserId)}&accountId=${encodeURIComponent(accountId)}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              query: `SELECT conversion_action.name, conversion_action.type, conversion_action.google_analytics_4_settings.property_name FROM conversion_action WHERE conversion_action.type IN ('GOOGLE_ANALYTICS_4_CUSTOM', 'GOOGLE_ANALYTICS_4_PURCHASE')`
+            })
+          }
+        );
+        
+        if (!response.ok) throw new Error('Failed to check');
+        
+        const data = await response.json();
+        const hasGA4 = data.results && data.results.length > 0;
+        
+        if (hasGA4) {
+          const propertyName = data.results[0]?.conversionAction?.googleAnalytics4Settings?.propertyName || 'Connected';
+          textEl.innerHTML = `✅ <strong>Google Analytics 4</strong> - Linked (${propertyName})`;
+          textEl.style.color = '#155724';
+          statusEl.style.background = '#d4edda';
+        } else {
+          textEl.innerHTML = '❌ <strong>Google Analytics 4</strong> - Not linked. <a href="https://ads.google.com/aw/conversions" target="_blank" style="color:#721c24;">Link in Google Ads</a>';
+          textEl.style.color = '#721c24';
+          statusEl.style.background = '#f8d7da';
+        }
+      } catch (err) {
+        textEl.innerHTML = '⚠️ Could not check Google Analytics 4 status';
+        textEl.style.color = '#666';
+        statusEl.style.background = '#f5f5f5';
+      }
+    }
+    window.checkGA4Link = checkGA4Link;
+
     async function checkAllAccountAssets() {
       await Promise.all([
         checkBusinessName(),
         checkLogo(),
-        checkLocationAsset()
+        checkLocationAsset(),
+        checkGA4Link()
       ]);
     }
     window.checkAllAccountAssets = checkAllAccountAssets;
